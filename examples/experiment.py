@@ -50,10 +50,10 @@ class Config:
 
 
 class Trainer:
-    """Trainer class for sequential models.
+    """Trainer class for ML models.
 
     Args:
-        model (vaelib.BaseVAE): GQN model.
+        model (vaelib.BaseVAE): ML model.
         config (dict): Dictionary of hyper-parameters.
     """
 
