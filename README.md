@@ -58,6 +58,12 @@ bash bin/train.sh <model-name>
 bash bin/train.sh betavae
 ```
 
+# Results
+
+|Model|Results|
+|:-:|:-:|
+|beta-VAE|![betavae](./images/betavae_mnist.png)|
+
 # Example codes
 
 ## Training
