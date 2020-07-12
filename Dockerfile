@@ -24,5 +24,5 @@ RUN pip3 install --upgrade pip
 RUN pip3 install .
 
 # Install other requirements for examples
-RUN pip3 install --no-cache-dir matplotlib==3.2.2 tqdm==4.46.1 \
-        tensorboardX==2.0
+RUN pip3 install --no-cache-dir torchvision==0.6.1 matplotlib==3.2.2 \
+        tqdm==4.46.1 tensorboardX==2.0
