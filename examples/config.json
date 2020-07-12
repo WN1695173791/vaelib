@@ -1,0 +1,12 @@
+{
+    "betavae_params": {
+        "in_channels": 1,
+        "z_dim": 10,
+        "beta": 10.0,
+        "capacity": 0.0,
+        "do_anneal": false
+    },
+    "optimizer_params": {},
+    "max_grad_value": 5.0,
+    "max_grad_norm": 100.0
+}
