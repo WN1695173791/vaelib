@@ -33,17 +33,17 @@ pip3 install --upgrade pip
 pip3 install .
 ```
 
-Install other libraries for example code.
-
-```bash
-pip3 install torchvision==0.6.1 matplotlib==3.2.2 tqdm==4.46.1  tensorboardX==2.0
-```
-
 Or use [Docker](https://docs.docker.com/get-docker/) and [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker). You can run container with GPUs by Docker 19.03+.
 
 ```bash
 docker build -t seqlib .
 docker run --gpus all -it seqlib bash
+```
+
+Install other requirements for example code.
+
+```bash
+pip3 install torchvision==0.6.1 matplotlib==3.2.2 tqdm==4.46.1  tensorboardX==2.0
 ```
 
 # Experiments
