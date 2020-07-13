@@ -6,7 +6,13 @@
         "capacity": 0.0,
         "do_anneal": false
     },
+    "avb_params": {
+        "in_channels": 1,
+        "z_dim": 10,
+        "e_dim": 10
+    },
     "optimizer_params": {},
+    "adv_optimizer_params": {},
     "max_grad_value": 5.0,
     "max_grad_norm": 100.0
 }
