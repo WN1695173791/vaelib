@@ -1,7 +1,9 @@
 
 """Base class for VAE models."""
 
-from typing import Tuple, Dict
+from typing import Dict, Iterator, Optional, Tuple
+
+import itertools
 
 import torch
 from torch import nn, Tensor
@@ -10,6 +12,12 @@ from torch.nn import functional as F
 
 class BaseVAE(nn.Module):
     """Base class for VAE models."""
+
+    def __init__(self):
+        super().__init__()
+
+        self.encoder: nn.Module
+        self.decoder: nn.Module
 
     def forward(self, x: Tensor, beta: float = 1.0) -> Dict[str, Tensor]:
         """Loss function for ELBO loss.
@@ -68,6 +76,25 @@ class BaseVAE(nn.Module):
         """
 
         raise NotImplementedError
+
+    def model_parameters(self) -> Iterator:
+        """Iterator of parameters in encoder and decoder.
+
+        Returns:
+            params (iterator): Parameters of encoder and decoder.
+        """
+
+        return itertools.chain(
+                   self.encoder.parameters(), self.decoder.parameters())
+
+    def adversarial_parameters(self) -> Optional[Iterator]:
+        """Model parameters for adversarial training.
+
+        Returns:
+            params (iterator or None): Parameters of discriminator.
+        """
+
+        return None
 
 
 def kl_divergence_normal(mu0: Tensor, var0: Tensor, mu1: Tensor, var1: Tensor,
