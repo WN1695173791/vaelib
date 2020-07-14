@@ -135,8 +135,8 @@ class BetaVAE(BaseVAE):
         self.decoder = Decoder(in_channels, z_dim)
 
         # Prior
-        self.register_buffer("p_mu", torch.zeros(z_dim))
-        self.register_buffer("p_var", torch.ones(z_dim))
+        self.register_buffer("p_mu", torch.zeros(1, z_dim))
+        self.register_buffer("p_var", torch.ones(1, z_dim))
 
     def inference(self, x: Tensor, beta: float = 1.0
                   ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
@@ -182,8 +182,8 @@ class BetaVAE(BaseVAE):
             x (torch.Tensor): Sampled observations, size `(b, c, h, w)`.
         """
 
-        mu = self.p_mu.unsqueeze(0).repeat(batch_size, 1)
-        var = self.p_var.unsqueeze(0).repeat(batch_size, 1)
+        mu = self.p_mu.repeat(batch_size, 1)
+        var = self.p_var.repeat(batch_size, 1)
 
         z = mu + var ** 0.5 * torch.randn_like(var)
         x = self.decoder(z)
