@@ -8,7 +8,7 @@ Understanding disentangling in β-VAE
 https://arxiv.org/abs/1804.03599
 """
 
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional
 
 import torch
 from torch import Tensor, nn
@@ -138,12 +138,14 @@ class BetaVAE(BaseVAE):
         self.register_buffer("p_mu", torch.zeros(1, z_dim))
         self.register_buffer("p_var", torch.ones(1, z_dim))
 
-    def inference(self, x: Tensor, beta: float = 1.0
+    def inference(self, x: Tensor, y: Optional[Tensor] = None,
+                  beta: float = 1.0
                   ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
         """Inferences reconstruction with ELBO loss calculation.
 
         Args:
             x (torch.Tensor): Observations, size `(b, c, h, w)`.
+            y (torch.Tensor, optional): Labels, size `(b,)`.
             beta (float, optional): Beta coefficient for KL loss.
 
         Returns:
@@ -172,11 +174,13 @@ class BetaVAE(BaseVAE):
 
         return (recon, z), loss_dict
 
-    def sample(self, batch_size: int) -> Tensor:
+    def sample(self, batch_size: int = 1, y: Optional[Tensor] = None
+               ) -> Tensor:
         """Samples data from model.
 
         Args:
-            batch_size (int): Batch size of sampled data.
+            batch_size (int, optional): Batch size of sampled data.
+            y (torch.Tensor, optional): Labels, size `(b,)`.
 
         Returns:
             x (torch.Tensor): Sampled observations, size `(b, c, h, w)`.

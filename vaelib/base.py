@@ -19,42 +19,47 @@ class BaseVAE(nn.Module):
         self.encoder: nn.Module
         self.decoder: nn.Module
 
-    def forward(self, x: Tensor, beta: float = 1.0) -> Dict[str, Tensor]:
+    def forward(self, x: Tensor, y: Optional[Tensor] = None, beta: float = 1.0
+                ) -> Dict[str, Tensor]:
         """Loss function for ELBO loss.
 
         Args:
             x (torch.Tensor): Observations, size `(b, c, h, w)`.
+            y (torch.Tensor, optional): Labels, size `(b,)`.
             beta (float, optional): Beta coefficient for KL loss.
 
         Returns:
             loss_dict (dict of [str, torch.Tensor]): Dict of lossses.
         """
 
-        _, loss_dict = self.inference(x, beta)
+        _, loss_dict = self.inference(x, y, beta)
 
         return loss_dict
 
-    def reconstruct(self, x: Tensor) -> Tensor:
+    def reconstruct(self, x: Tensor, y: Optional[Tensor] = None) -> Tensor:
         """Reconstructs given observations.
 
         Args:
             x (torch.Tensor): Observations, size `(b, c, h, w)`.
+            y (torch.Tensor, optional): Labels, size `(b,)`.
 
         Returns:
             recon (torch.Tensor): Reconstructed observations, size
                 `(b, c, h, w)`.
         """
 
-        (recon, *_), _ = self.inference(x)
+        (recon, *_), _ = self.inference(x, y)
 
         return recon
 
-    def inference(self, x: Tensor, beta: float = 1.0
+    def inference(self, x: Tensor, y: Optional[Tensor] = None,
+                  beta: float = 1.0
                   ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
         """Inferences reconstruction with ELBO loss calculation.
 
         Args:
             x (torch.Tensor): Observations, size `(b, c, h, w)`.
+            y (torch.Tensor, optional): Labels, size `(b,)`.
             beta (float, optional): Beta coefficient for KL loss.
 
         Returns:
@@ -65,11 +70,13 @@ class BaseVAE(nn.Module):
 
         raise NotImplementedError
 
-    def sample(self, batch_size: int) -> Tensor:
+    def sample(self, batch_size: int = 1, y: Optional[Tensor] = None
+               ) -> Tensor:
         """Samples data from model.
 
         Args:
-            batch_size (int): Batch size of sampled data.
+            batch_size (int, optional): Batch size of sampled data.
+            y (torch.Tensor, optional): Labels, size `(b,)`.
 
         Returns:
             x (torch.Tensor): Sampled observations, size `(b, c, h, w)`.
