@@ -17,10 +17,23 @@ https://arxiv.org/abs/1801.04381
 Jie Hu, Li Shen, Samuel Albanie, Gang Sun, Enhua Wu.
 "Squeeze-and-Excitation Networks"
 https://arxiv.org/abs/1709.01507
+
+Diederik P. Kingma, Tim Salimans, Rafal Jozefowicz, Xi Chen, Ilya Sutskever,
+Max Welling.
+"Improving Variational Inference with Inverse Autoregressive Flow"
+https://arxiv.org/abs/1606.04934
+Example code: https://github.com/pclucas14/iaf-vae
 """
+
+from typing import Dict, Optional, Tuple, Union, List
 
 import torch
 from torch import Tensor, nn
+from torch.nn import functional as F
+
+from .base import BaseVAE, kl_divergence_normal, nll_bernoulli
+
+Iterable = Union[List[int], Tuple[int]]
 
 
 class SwishActivation(nn.Module):
@@ -84,10 +97,10 @@ class GenerativeResidualCell(nn.Module):
 
     Args:
         in_channels (int): Channel size of inputs.
-        expand_dim (int): Dimension size for expansion.
+        expansion_dim (int): Dimension size for expansion.
     """
 
-    def __init__(self, in_channels: int, expand_dim: int):
+    def __init__(self, in_channels: int, expansion_dim: int):
         super().__init__()
 
         self.resblock = nn.Sequential(
@@ -95,22 +108,22 @@ class GenerativeResidualCell(nn.Module):
             nn.BatchNorm2d(in_channels),
 
             # Conv. 1x1
-            nn.Conv2d(in_channels, expand_dim * in_channels, 1),
+            nn.Conv2d(in_channels, expansion_dim * in_channels, 1),
 
             # BN - Swish
-            nn.BatchNorm2d(expand_dim * in_channels),
+            nn.BatchNorm2d(expansion_dim * in_channels),
             SwishActivation(),
 
             # dep. sep. conv. 5x5
-            nn.Conv2d(expand_dim * in_channels, expand_dim * in_channels,
-                      kernel_size=5, groups=expand_dim * in_channels),
+            nn.Conv2d(expansion_dim * in_channels, expansion_dim * in_channels,
+                      kernel_size=5, groups=expansion_dim * in_channels),
 
             # BN - Swish
-            nn.BatchNorm2d(expand_dim * in_channels),
+            nn.BatchNorm2d(expansion_dim * in_channels),
             SwishActivation(),
 
             # Conv. 1x1
-            nn.Conv2d(expand_dim * in_channels, in_channels, 1),
+            nn.Conv2d(expansion_dim * in_channels, in_channels, 1),
 
             # BN
             nn.BatchNorm2d(in_channels),
