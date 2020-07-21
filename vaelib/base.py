@@ -179,7 +179,7 @@ def nll_logistic(x: Tensor, mu: Tensor, scale: Tensor, reduce: bool = True,
     """
 
     x = (torch.floor(x / binsize) * binsize - mu) / scale
-    nll = torch.log(
+    nll = -torch.log(
         torch.sigmoid(x + binsize / scale) - torch.sigmoid(x) + 1e-7)
 
     if reduce:

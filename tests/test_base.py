@@ -58,6 +58,19 @@ class TestLossFunc(unittest.TestCase):
         self.assertTupleEqual(nll.size(), (batch,))
         self.assertTrue((nll >= 0).all())
 
+    def test_nll_logistic(self):
+        batch = 10
+        x_dim = 5
+
+        x = torch.rand(batch, x_dim)
+        probs = torch.rand(batch, x_dim)
+        scale = torch.ones(batch, x_dim)
+
+        nll = vaelib.nll_logistic(x, probs, scale)
+
+        self.assertTupleEqual(nll.size(), (batch,))
+        self.assertTrue((nll >= 0).all())
+
 
 if __name__ == "__main__":
     unittest.main()
