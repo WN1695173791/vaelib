@@ -157,3 +157,31 @@ def nll_bernoulli(x: Tensor, probs: Tensor, reduce: bool = True) -> Tensor:
     if reduce:
         return nll.sum(-1)
     return nll
+
+
+def nll_logistic(x: Tensor, mu: Tensor, scale: Tensor, reduce: bool = True,
+                 binsize: float = 1 / 256) -> Tensor:
+    """Negative log likelihood for discretized logsitc.
+
+
+    ref) https://github.com/pclucas14/iaf-vae/blob/master/utils.py#L74
+
+    Args:
+        x (torch.Tensor): Inputs tensor, size `(*, dim)`.
+        mu (torch.Tensor): Mean of logsitc function, size `(*, dim)`.
+        scale (torch.Tensor): Scale of logsitc function, size `(*, dim)`.
+        reduce (bool, optional): If `True`, sum calculated loss for each
+            data point.
+
+    Returns:
+        nll (torch.Tensor): Calculated nll for each data, size `(*,)` if
+            `reduce` is `True`, `(*, dim)` otherwise.
+    """
+
+    x = (torch.floor(x / binsize) * binsize - mu) / scale
+    nll = torch.log(
+        torch.sigmoid(x + binsize / scale) - torch.sigmoid(x) + 1e-7)
+
+    if reduce:
+        return nll.sum(-1)
+    return nll

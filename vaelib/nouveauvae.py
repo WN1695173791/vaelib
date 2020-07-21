@@ -21,17 +21,19 @@ https://arxiv.org/abs/1709.01507
 Diederik P. Kingma, Tim Salimans, Rafal Jozefowicz, Xi Chen, Ilya Sutskever,
 Max Welling.
 "Improving Variational Inference with Inverse Autoregressive Flow"
-https://arxiv.org/abs/1606.04934
-Example code: https://github.com/pclucas14/iaf-vae
+https://arxiv.org/abs/1606.04934, https://github.com/openai/iaf
+Other implementation: https://github.com/pclucas14/iaf-vae
 """
 
 from typing import Dict, Optional, Tuple, Union, List
+
+import math
 
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-from .base import BaseVAE, kl_divergence_normal, nll_bernoulli
+from .base import BaseVAE, kl_divergence_normal, nll_logistic
 
 Iterable = Union[List[int], Tuple[int]]
 
@@ -116,7 +118,8 @@ class GenerativeResidualCell(nn.Module):
 
             # dep. sep. conv. 5x5
             nn.Conv2d(expansion_dim * in_channels, expansion_dim * in_channels,
-                      kernel_size=5, groups=expansion_dim * in_channels),
+                      kernel_size=5, stride=1, padding=2,
+                      groups=expansion_dim * in_channels),
 
             # BN - Swish
             nn.BatchNorm2d(expansion_dim * in_channels),
@@ -161,14 +164,14 @@ class EncodingResidualCell(nn.Module):
             SwishActivation(),
 
             # Conv. 3x3
-            nn.Conv2d(in_channels, in_channels, 3),
+            nn.Conv2d(in_channels, in_channels, 3, stride=1, padding=1),
 
             # BN - Swish
             nn.BatchNorm2d(in_channels),
             SwishActivation(),
 
             # Conv. 3x3
-            nn.Conv2d(in_channels, in_channels, 3),
+            nn.Conv2d(in_channels, in_channels, 3, stride=1, padding=1),
 
             # SE
             SELayer(in_channels),
@@ -188,18 +191,21 @@ class EncodingResidualCell(nn.Module):
 
 
 class HierarchicalLayer(nn.Module):
-    """Inverse Autoregressive Flow layer.
+    """Hierarchical layer.
 
     Args:
-        in_channels (int): Channel size of inputs.
+        in_channels (int): Number of channels in inputs.
         z_channels (int): Number of channels in z.
         expansion_dim (int): Dimension size for expansion in residual cell.
         num_cells (int): Number of residual cells in block.
-        do_downsample (bool): If `True`, down & up sample inputs.
+        temperature (float, optional): Temperature of the prior for sampling.
+        do_downsample (bool, optional): If `True`, down & up sample inputs.
+        up_channels (int, optional): Number of channels in upsampled inputs.
     """
 
     def __init__(self, in_channels: int, z_channels: int, expansion_dim: int,
-                 num_cells: int, do_downsample: bool = False):
+                 num_cells: int, temperature: float = 1.0,
+                 do_downsample: bool = False, up_channels: int = 3):
         super().__init__()
 
         # Residual blocks
@@ -217,9 +223,12 @@ class HierarchicalLayer(nn.Module):
         # Down and up sample function, used only if do_downsample is True
         self.do_downsample = do_downsample
         self.down_sample = nn.Conv2d(
-            in_channels * 2, in_channels, kernel_size=1, stride=2)
+            up_channels, in_channels, kernel_size=1, stride=2)
         self.up_sample = nn.ConvTranspose2d(
-            in_channels, in_channels * 2, kernel_size=4, stride=2, padding=1)
+            in_channels, up_channels, kernel_size=4, stride=2, padding=1)
+
+        # Temperature for prior
+        self.temperature = temperature
 
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         """Forward computation for inference.
@@ -229,8 +238,9 @@ class HierarchicalLayer(nn.Module):
 
         Returns:
             x (torch.Tensor): Inferred states.
-            q_mu (torch.Tensor): Encoded mu of q(z|x).
-            q_var (torch.Tensor): Encoded log variance of q(z|x).
+            delta_mu (torch.Tensor, optional): Encoded delta mu of q(z|x).
+            delta_var (torch.Tensor, optional): Encoded delta log variance of
+                q(z|x).
         """
 
         if self.do_downsample:
@@ -240,18 +250,20 @@ class HierarchicalLayer(nn.Module):
             x = layer(x)
 
         # Encode variational parameters
-        q_mu, q_logvar = torch.chunk(self.conv_inf(x), 2, dim=1)
+        delta_mu, delta_logvar = torch.chunk(self.conv_inf(x), 2, dim=1)
 
-        return x, q_mu, q_logvar
+        return x, delta_mu, delta_logvar
 
-    def inverse(self, x: Tensor, q_mu: Optional[Tensor] = None,
-                q_logvar: Optional[Tensor] = None) -> Tuple[Tensor, Tensor]:
+    def inverse(self, x: Tensor, delta_mu: Optional[Tensor] = None,
+                delta_logvar: Optional[Tensor] = None
+                ) -> Tuple[Tensor, Tensor]:
         """Inverse computation for generation.
 
         Args:
             x (torch.Tensor): Input tensor, size `(b, c, h, w)`.
-            q_mu (torch.Tensor, optional): Encoded mu of q(z|x).
-            q_var (torch.Tensor, optional): Encoded log variance of q(z|x).
+            delta_mu (torch.Tensor, optional): Encoded delta mu of q(z|x).
+            delta_var (torch.Tensor, optional): Encoded delta log variance of
+                q(z|x).
 
         Returns:
             x (torch.Tensor): Generated samples.
@@ -262,12 +274,12 @@ class HierarchicalLayer(nn.Module):
         p_mu, p_logvar = torch.chunk(self.conv_gen(x), 2, dim=1)
 
         # Concat
-        if q_mu is not None and q_logvar is not None:
-            mu = p_mu + q_mu
-            var = F.softplus(p_logvar + q_logvar)
+        if delta_mu is not None and delta_logvar is not None:
+            mu = p_mu + delta_mu
+            var = F.softplus(p_logvar + delta_logvar)
         else:
-            mu = p_mu * 2
-            var = F.softplus(p_logvar * 2)
+            mu = p_mu
+            var = F.softplus(p_logvar) * self.temperature ** 0.5
 
         # Sample latents
         z = mu + var ** 0.5 + torch.randn_like(var)
@@ -284,11 +296,157 @@ class HierarchicalLayer(nn.Module):
             x = self.up_sample(x)
 
         # Calculate kl
-        if q_mu is not None and q_logvar is not None:
+        if delta_mu is not None and delta_logvar is not None:
             kl_loss = kl_divergence_normal(
-                q_mu, F.softplus(q_logvar), p_mu, F.softplus(p_logvar), False)
+                mu, var, p_mu, F.softplus(p_logvar), reduce=False)
         else:
             kl_loss = torch.zeros_like(p_mu)
         kl_loss = kl_loss.sum(dim=[1, 2, 3])
 
         return x, kl_loss
+
+
+class NouveauVAE(BaseVAE):
+    """Nouveau VAE class.
+
+    Args:
+        in_channels (int, optional): Channel size of inputs.
+        num_nflows (int, optional): Number of normalizing flows.
+        num_groups (iterable, optional): Iterable of number of groups in each
+            scale.
+        z_channels (int, optional): Number of channels in z.
+        enc_channels (int, optional): Number of initial channels in encoder.
+        num_rescells (int, optional): Number of residual cells per group.
+        annealing_lmd (float, optional): Coefficient of the smoothness loss.
+        temperature (float, optional): Temperature of the prior for sampling.
+        expansion_dim (int, optional): Dimension size for expansion in residual
+            cell.
+    """
+
+    def __init__(self, in_channels: int = 3, in_dims: int = 32,
+                 num_nflows: int = 0, num_groups: Iterable = (30,),
+                 z_channels: int = 20, enc_channels: int = 128,
+                 num_rescells: int = 2, annealing_lmd: float = 0.1,
+                 temperature: float = 0.7, expansion_dim: int = 3):
+        super().__init__()
+
+        # Hierarchical blocks
+        layers = []
+        for i, groups in enumerate(num_groups[::-1]):
+            for j in range(groups):
+                if j == 0:
+                    # Convert channel size
+                    if i == 0:
+                        layers.append(HierarchicalLayer(
+                            enc_channels, z_channels, expansion_dim,
+                            num_rescells, temperature, True, in_channels))
+                    else:
+                        layers.append(HierarchicalLayer(
+                            enc_channels * 2, z_channels, expansion_dim,
+                            num_rescells, temperature, True, enc_channels))
+                        enc_channels *= 2
+                else:
+                    layers.append(HierarchicalLayer(
+                        enc_channels, z_channels, expansion_dim, num_rescells,
+                        temperature, do_downsample=False))
+
+        self.layers = nn.ModuleList(layers)
+
+        # Parameter
+        self.annealing_lmd = annealing_lmd
+
+        # Initial states of latents
+        self.h_dims = in_dims // (len(num_groups) + 1)
+        self.h_init = nn.Parameter(torch.zeros(1, enc_channels, 1, 1))
+
+        # Log scale for outputs
+        self.log_scale = nn.Parameter(torch.zeros(1, 1, 1, 1))
+
+    def inference(self, x: Tensor, y: Optional[Tensor] = None,
+                  beta: float = 1.0
+                  ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
+        """Inferences reconstruction with ELBO loss calculation.
+
+        Args:
+            x (torch.Tensor): Observations, size `(b, c, h, w)`.
+            y (torch.Tensor, optional): Labels, size `(b,)`.
+            beta (float, optional): Beta coefficient for KL loss.
+
+        Returns:
+            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded
+                data. The first element should be reconstructed observations.
+            loss_dict (dict of [str, torch.Tensor]): Dict of lossses.
+        """
+
+        # Save original inputs
+        inputs = x
+
+        # Bottom-up inference
+        q_params_list = []
+        for layer in self.layers:
+            x, *params = layer(x)
+            q_params_list.append(params)
+
+        # Top-down generation
+        kl_loss = x.new_zeros((x.size(0),))
+        h = self.h_init.expand_as(x)
+        for layer, q_params in zip(self.layers[::-1], q_params_list[::-1]):
+            h, _kl_tmp = layer.inverse(h, *q_params)
+            kl_loss += _kl_tmp
+
+        recon = h.clamp(-0.5 + 1 / 512, 0.5 - 1 / 512)
+
+        # NLL loss
+        nll_loss = nll_logistic(
+            recon, inputs, self.log_scale.exp(), reduce=False)
+        nll_loss = nll_loss.sum(dim=[1, 2, 3])
+
+        # KL annealing
+        kl_loss *= beta
+
+        # Spectral regularization
+        sr_loss = x.new_zeros((x.size(0),))
+        for layer in self.layers:
+            for name, value in layer.named_parameters():
+                if name == "weight":
+                    weight = value.view(value.size(0), -1)
+                    v = torch.randn(weight.size(1))
+                    u = weight @ v
+                    v = weight.t() @ u
+                    sr_loss += u.norm() / v.norm()
+        sr_loss *= self.annealing_lmd
+
+        # ELBO loss
+        loss = nll_loss + kl_loss + sr_loss
+
+        # Bit loss per pixel
+        _, *x_dims = x.size()
+        pixel_num = torch.tensor(x_dims).prod()
+        bit_loss = (loss / pixel_num + math.log(256)) / math.log(2)
+
+        # Loss dict
+        loss_dict = {"loss": loss, "bit_loss": bit_loss, "nll_loss": nll_loss,
+                     "kl_loss": kl_loss, "sr_loss": sr_loss}
+
+        return (recon,), loss_dict
+
+    def sample(self, batch_size: int = 1, y: Optional[Tensor] = None
+               ) -> Tensor:
+        """Samples data from model.
+
+        Args:
+            batch_size (int, optional): Batch size of sampled data.
+            y (torch.Tensor, optional): Labels, size `(b,)`.
+
+        Returns:
+            x (torch.Tensor): Sampled observations, size `(b, c, h, w)`.
+        """
+
+        # Top-down generation
+        h = self.h_init.repeat(batch_size, 1, self.h_dims, self.h_dims)
+        for layer in self.layers[::-1]:
+            h, _ = layer.inverse(h)
+
+        sample = h.clamp(-0.5 + 1 / 512, 0.5 - 1 / 512)
+
+        return sample
