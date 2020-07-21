@@ -16,15 +16,18 @@ class TestNouveauVAE(unittest.TestCase):
         (recon,), loss_dict = self.model.inference(x)
 
         self.assertTupleEqual(recon.size(), x.size())
+        self.assertFalse(torch.isnan(recon).any())
 
         self.assertSetEqual(
             set(loss_dict.keys()),
             set(["loss", "bit_loss", "kl_loss", "nll_loss", "sr_loss"]))
-        self.assertTupleEqual(loss_dict["loss"].size(), (10,))
-        self.assertTupleEqual(loss_dict["bit_loss"].size(), (10,))
-        self.assertTupleEqual(loss_dict["kl_loss"].size(), (10,))
-        self.assertTupleEqual(loss_dict["nll_loss"].size(), (10,))
-        self.assertTupleEqual(loss_dict["sr_loss"].size(), (10,))
+
+        keys = ["loss", "bit_loss", "kl_loss", "nll_loss", "sr_loss"]
+        for k in keys:
+            self.assertTupleEqual(loss_dict[k].size(), (10,))
+
+        for k in keys:
+            self.assertFalse(torch.isnan(loss_dict[k]).any())
 
     def test_sample(self):
         x = self.model.sample(4)
@@ -35,7 +38,7 @@ class TestNouveauVAE(unittest.TestCase):
     def test_other_setting(self):
         x = torch.rand(10, 3, 64, 64)
         model = vaelib.NouveauVAE(num_groups=[5, 10, 20], enc_channels=64)
-        (recon,), loss_dict = model.inference(x)
+        (recon,), _ = model.inference(x)
 
         self.assertTupleEqual(recon.size(), x.size())
 
