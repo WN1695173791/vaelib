@@ -191,21 +191,23 @@ class HierarchicalLayer(nn.Module):
     """Inverse Autoregressive Flow layer.
 
     Args:
-        in_channels (int, optional): Channel size of inputs.
-        z_channels (int, optional): Number of channels in z.
-        expansion_dim (int, optional): Dimension size for expansion in residual
-            cell.
-        do_downsample (bool, optional): If `True`, down & up sample inputs.
+        in_channels (int): Channel size of inputs.
+        z_channels (int): Number of channels in z.
+        expansion_dim (int): Dimension size for expansion in residual cell.
+        num_cells (int): Number of residual cells in block.
+        do_downsample (bool): If `True`, down & up sample inputs.
     """
 
     def __init__(self, in_channels: int, z_channels: int, expansion_dim: int,
-                 do_downsample: bool = False):
+                 num_cells: int, do_downsample: bool = False):
         super().__init__()
 
         # Residual blocks
-        self.inference_block = EncodingResidualCell(in_channels)
-        self.generative_block = GenerativeResidualCell(
-            in_channels, expansion_dim)
+        self.inference_block = nn.ModuleList(
+            [EncodingResidualCell(in_channels) for _ in range(num_cells)])
+        self.generative_block = nn.ModuleList(
+            [GenerativeResidualCell(in_channels, expansion_dim)
+             for _ in range(num_cells)])
 
         # Conv for z params
         self.conv_inf = nn.Conv2d(in_channels, z_channels * 2, 1)
@@ -226,7 +228,7 @@ class HierarchicalLayer(nn.Module):
             x (torch.Tensor): Input tensor, size `(b, c, h, w)`.
 
         Returns:
-            h (torch.Tensor): Inferred hidden state.
+            x (torch.Tensor): Inferred states.
             q_mu (torch.Tensor): Encoded mu of q(z|x).
             q_var (torch.Tensor): Encoded log variance of q(z|x).
         """
@@ -234,14 +236,17 @@ class HierarchicalLayer(nn.Module):
         if self.do_downsample:
             x = self.down_sample(x)
 
-        h = self.inference_block(x)
-        q_mu, q_logvar = torch.chunk(self.conv_inf(h), 2, dim=1)
+        for layer in self.inference_block:
+            x = layer(x)
 
-        return h, q_mu, q_logvar
+        # Encode variational parameters
+        q_mu, q_logvar = torch.chunk(self.conv_inf(x), 2, dim=1)
+
+        return x, q_mu, q_logvar
 
     def inverse(self, x: Tensor, q_mu: Optional[Tensor] = None,
                 q_logvar: Optional[Tensor] = None) -> Tuple[Tensor, Tensor]:
-        """Inverse conputation for generation.
+        """Inverse computation for generation.
 
         Args:
             x (torch.Tensor): Input tensor, size `(b, c, h, w)`.
@@ -249,7 +254,7 @@ class HierarchicalLayer(nn.Module):
             q_var (torch.Tensor, optional): Encoded log variance of q(z|x).
 
         Returns:
-            h (torch.Tensor): Generated hidden states.
+            x (torch.Tensor): Generated samples.
             kl_loss (torch.Tensor): Calculated KL loss for latents.
         """
 
@@ -268,11 +273,15 @@ class HierarchicalLayer(nn.Module):
         z = mu + var ** 0.5 + torch.randn_like(var)
 
         # Concat input and sampled latents
-        h = x + self.conv_cat(z)
+        x = x + self.conv_cat(z)
+
+        # Generate
+        for layer in self.generative_block:
+            x = layer(x)
 
         # Upsample
         if self.do_downsample:
-            h = self.up_sample(h)
+            x = self.up_sample(x)
 
         # Calculate kl
         if q_mu is not None and q_logvar is not None:
@@ -282,4 +291,4 @@ class HierarchicalLayer(nn.Module):
             kl_loss = torch.zeros_like(p_mu)
         kl_loss = kl_loss.sum(dim=[1, 2, 3])
 
-        return h, kl_loss
+        return x, kl_loss
