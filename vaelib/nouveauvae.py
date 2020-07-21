@@ -378,6 +378,9 @@ class NouveauVAE(BaseVAE):
             loss_dict (dict of [str, torch.Tensor]): Dict of lossses.
         """
 
+        # Change data range: [0, 1] -> [-0.5, 0.5]
+        x -= 0.5
+
         # Save original inputs
         inputs = x
 
@@ -428,6 +431,9 @@ class NouveauVAE(BaseVAE):
         loss_dict = {"loss": loss, "bit_loss": bit_loss, "nll_loss": nll_loss,
                      "kl_loss": kl_loss, "sr_loss": sr_loss}
 
+        # Revert data range: [-0.5, 0.5] -> [0, 1]
+        recon += 0.5
+
         return (recon,), loss_dict
 
     def sample(self, batch_size: int = 1, y: Optional[Tensor] = None
@@ -447,6 +453,6 @@ class NouveauVAE(BaseVAE):
         for layer in self.layers[::-1]:
             h, _ = layer.inverse(h)
 
-        sample = h.clamp(-0.5 + 1 / 512, 0.5 - 1 / 512)
+        sample = h.clamp(-0.5 + 1 / 512, 0.5 - 1 / 512) + 0.5
 
         return sample

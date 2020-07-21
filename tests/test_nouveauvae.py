@@ -12,7 +12,7 @@ class TestNouveauVAE(unittest.TestCase):
         self.model = vaelib.NouveauVAE()
 
     def test_inference(self):
-        x = torch.rand(10, 3, 32, 32) - 0.5
+        x = torch.rand(10, 3, 32, 32)
         (recon,), loss_dict = self.model.inference(x)
 
         self.assertTupleEqual(recon.size(), x.size())
@@ -30,10 +30,10 @@ class TestNouveauVAE(unittest.TestCase):
         x = self.model.sample(4)
 
         self.assertTupleEqual(x.size(), (4, 3, 32, 32))
-        self.assertTrue((x >= -0.5).all() and (x <= 0.5).all())
+        self.assertTrue((x >= 0).all() and (x <= 1).all())
 
     def test_other_setting(self):
-        x = torch.rand(10, 3, 64, 64) - 0.5
+        x = torch.rand(10, 3, 64, 64)
         model = vaelib.NouveauVAE(num_groups=[5, 10, 20], enc_channels=64)
         (recon,), loss_dict = model.inference(x)
 
