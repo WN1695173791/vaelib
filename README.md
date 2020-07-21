@@ -20,8 +20,8 @@ Additional requirements for example codes.
 Clone repository.
 
 ```bash
-git clone https://github.com/rnagumo/seqlib.git
-cd seqlib
+git clone https://github.com/rnagumo/vaelib.git
+cd vaelib
 ```
 
 Install the package in virtual env.
@@ -36,8 +36,8 @@ pip3 install .
 Or use [Docker](https://docs.docker.com/get-docker/) and [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker). You can run container with GPUs by Docker 19.03+.
 
 ```bash
-docker build -t seqlib .
-docker run --gpus all -it seqlib bash
+docker build -t vaelib .
+docker run --gpus all -it vaelib bash
 ```
 
 Install other requirements for example code.
