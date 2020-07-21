@@ -185,3 +185,101 @@ class EncodingResidualCell(nn.Module):
         """
 
         return x + self.resblock(x)
+
+
+class HierarchicalLayer(nn.Module):
+    """Inverse Autoregressive Flow layer.
+
+    Args:
+        in_channels (int, optional): Channel size of inputs.
+        z_channels (int, optional): Number of channels in z.
+        expansion_dim (int, optional): Dimension size for expansion in residual
+            cell.
+        do_downsample (bool, optional): If `True`, down & up sample inputs.
+    """
+
+    def __init__(self, in_channels: int, z_channels: int, expansion_dim: int,
+                 do_downsample: bool = False):
+        super().__init__()
+
+        # Residual blocks
+        self.inference_block = EncodingResidualCell(in_channels)
+        self.generative_block = GenerativeResidualCell(
+            in_channels, expansion_dim)
+
+        # Conv for z params
+        self.conv_inf = nn.Conv2d(in_channels, z_channels * 2, 1)
+        self.conv_gen = nn.Conv2d(in_channels, z_channels * 2, 1)
+        self.conv_cat = nn.Conv2d(z_channels, in_channels, 1)
+
+        # Down and up sample function, used only if do_downsample is True
+        self.do_downsample = do_downsample
+        self.down_sample = nn.Conv2d(
+            in_channels * 2, in_channels, kernel_size=1, stride=2)
+        self.up_sample = nn.ConvTranspose2d(
+            in_channels, in_channels * 2, kernel_size=4, stride=2, padding=1)
+
+    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
+        """Forward computation for inference.
+
+        Args:
+            x (torch.Tensor): Input tensor, size `(b, c, h, w)`.
+
+        Returns:
+            h (torch.Tensor): Inferred hidden state.
+            q_mu (torch.Tensor): Encoded mu of q(z|x).
+            q_var (torch.Tensor): Encoded log variance of q(z|x).
+        """
+
+        if self.do_downsample:
+            x = self.down_sample(x)
+
+        h = self.inference_block(x)
+        q_mu, q_logvar = torch.chunk(self.conv_inf(h), 2, dim=1)
+
+        return h, q_mu, q_logvar
+
+    def inverse(self, x: Tensor, q_mu: Optional[Tensor] = None,
+                q_logvar: Optional[Tensor] = None) -> Tuple[Tensor, Tensor]:
+        """Inverse conputation for generation.
+
+        Args:
+            x (torch.Tensor): Input tensor, size `(b, c, h, w)`.
+            q_mu (torch.Tensor, optional): Encoded mu of q(z|x).
+            q_var (torch.Tensor, optional): Encoded log variance of q(z|x).
+
+        Returns:
+            h (torch.Tensor): Generated hidden states.
+            kl_loss (torch.Tensor): Calculated KL loss for latents.
+        """
+
+        # Prior params
+        p_mu, p_logvar = torch.chunk(self.conv_gen(x), 2, dim=1)
+
+        # Concat
+        if q_mu is not None and q_logvar is not None:
+            mu = p_mu + q_mu
+            var = F.softplus(p_logvar + q_logvar)
+        else:
+            mu = p_mu * 2
+            var = F.softplus(p_logvar * 2)
+
+        # Sample latents
+        z = mu + var ** 0.5 + torch.randn_like(var)
+
+        # Concat input and sampled latents
+        h = x + self.conv_cat(z)
+
+        # Upsample
+        if self.do_downsample:
+            h = self.up_sample(h)
+
+        # Calculate kl
+        if q_mu is not None and q_logvar is not None:
+            kl_loss = kl_divergence_normal(
+                q_mu, F.softplus(q_logvar), p_mu, F.softplus(p_logvar), False)
+        else:
+            kl_loss = torch.zeros_like(p_mu)
+        kl_loss = kl_loss.sum(dim=[1, 2, 3])
+
+        return h, kl_loss
