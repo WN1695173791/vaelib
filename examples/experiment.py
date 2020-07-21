@@ -43,6 +43,7 @@ class Config:
     nvae_params: dict
     optimizer_params: dict
     adv_optimizer_params: dict
+    beta_annealer_params: dict
     max_grad_value: float
     max_grad_norm: float
 
@@ -74,12 +75,14 @@ class Trainer:
         self.test_loader: dataloader.DataLoader
         self.optimizer: optimizer.Optimizer
         self.adv_optimizer: Optional[optimizer.Optimizer]
+        self.beta_anneler: vaelib.LinearAnnealer
         self.device: torch.device
         self.pbar: tqdm.tqdm
 
         # Training utils
         self.global_steps = 0
         self.postfix: Dict[str, float] = {}
+        self.beta = 1.0
 
     def check_logdir(self) -> None:
         """Checks log directory.
@@ -164,9 +167,12 @@ class Trainer:
             # Data to device
             data = data.to(self.device)
 
+            # Annealing
+            self.beta = next(self.beta_anneler)
+
             # Forward
             self.optimizer.zero_grad()
-            loss_dict = self.model(data)
+            loss_dict = self.model(data, beta=self.beta)
             loss = loss_dict["loss"].mean()
 
             # Backward and update
@@ -233,7 +239,7 @@ class Trainer:
         for data, _ in self.test_loader:
             with torch.no_grad():
                 # Data to device
-                data = data.to(self.device)
+                data = data.to(self.device, beta=self.beta)
 
                 # Calculate loss
                 loss_dict = self.model(data)
@@ -375,6 +381,10 @@ class Trainer:
             self.optimizer = optim.Adam(
                 self.model.parameters(), **self.config.optimizer_params)
             self.adv_optimizer = None
+
+        # Annealer
+        self.beta_anneler = vaelib.LinearAnnealer(
+            **self.config.beta_annealer_params)
 
         # Progress bar
         self.pbar = tqdm.tqdm(total=self.config.max_steps)
