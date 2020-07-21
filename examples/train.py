@@ -50,6 +50,7 @@ def main():
     model_dict = {
         "betavae": vaelib.BetaVAE,
         "avb": vaelib.AVB,
+        "nvae": vaelib.NouveauVAE,
     }
     model = model_dict[args.model](**config[f"{args.model}_params"])
 
