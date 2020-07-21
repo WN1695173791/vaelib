@@ -130,8 +130,12 @@ class Trainer:
 
         self.logger.info("Load dataset")
 
-        _transform = transforms.Compose([
-            transforms.Resize(64), transforms.ToTensor()])
+        if self.config.model == "nvae":
+            _transform = transforms.Compose([
+                transforms.Resize(32), transforms.ToTensor()])
+        else:
+            _transform = transforms.Compose([
+                transforms.Resize(64), transforms.ToTensor()])
 
         # Dataset
         train_data = datasets.MNIST(
