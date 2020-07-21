@@ -279,7 +279,7 @@ class HierarchicalLayer(nn.Module):
             var = F.softplus(p_logvar + delta_logvar)
         else:
             mu = p_mu
-            var = F.softplus(p_logvar) * self.temperature ** 0.5
+            var = F.softplus(p_logvar) * self.temperature ** 2
 
         # Sample latents
         z = mu + var ** 0.5 + torch.randn_like(var)
