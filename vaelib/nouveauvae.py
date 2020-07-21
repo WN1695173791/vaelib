@@ -411,7 +411,7 @@ class NouveauVAE(BaseVAE):
         sr_loss = x.new_zeros((x.size(0),))
         for layer in self.layers:
             for name, value in layer.named_parameters():
-                if name == "weight":
+                if "weight" in name:
                     weight = value.view(value.size(0), -1)
                     v = torch.randn(weight.size(1))
                     u = weight @ v
