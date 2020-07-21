@@ -40,6 +40,7 @@ class Config:
     # From config
     betavae_params: dict
     avb_params: dict
+    nvae_params: dict
     optimizer_params: dict
     adv_optimizer_params: dict
     max_grad_value: float
