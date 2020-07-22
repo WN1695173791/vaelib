@@ -46,6 +46,18 @@ class TestLossFunc(unittest.TestCase):
         self.assertTupleEqual(kl.size(), (batch,))
         self.assertTrue((kl == 0).all())
 
+    def test_kl_divergence_normal_diff(self):
+        batch = 10
+        x_dim = 5
+
+        delta_mu = torch.randn(batch, x_dim)
+        delta_var = torch.rand(batch, x_dim) + 0.01
+        var = torch.rand(batch, x_dim) + 0.01
+
+        kl = vaelib.kl_divergence_normal_diff(delta_mu, delta_var, var)
+        self.assertTupleEqual(kl.size(), (batch,))
+        self.assertTrue((kl >= 0).all())
+
     def test_nll_bernoulli(self):
         batch = 10
         x_dim = 5

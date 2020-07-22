@@ -33,7 +33,7 @@ import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-from .base import BaseVAE, kl_divergence_normal, nll_logistic
+from .base import BaseVAE, kl_divergence_normal_diff, nll_logistic
 
 Iterable = Union[List[int], Tuple[int]]
 
@@ -297,8 +297,9 @@ class HierarchicalLayer(nn.Module):
 
         # Calculate kl
         if delta_mu is not None and delta_logvar is not None:
-            kl_loss = kl_divergence_normal(
-                mu, var, p_mu, F.softplus(p_logvar), reduce=False)
+            kl_loss = kl_divergence_normal_diff(
+                delta_mu, F.softplus(delta_logvar), F.softplus(p_logvar),
+                reduce=False)
         else:
             kl_loss = torch.zeros_like(p_mu)
         kl_loss = kl_loss.sum(dim=[1, 2, 3])

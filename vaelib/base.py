@@ -132,6 +132,31 @@ def kl_divergence_normal(mu0: Tensor, var0: Tensor, mu1: Tensor, var1: Tensor,
     return kl
 
 
+def kl_divergence_normal_diff(delta_mu: Tensor, delta_var: Tensor, var: Tensor,
+                              reduce: bool = True) -> Tensor:
+    """Kullback Leibler divergence for 1-D normal with parameter differences.
+
+    p = N(mu, var)
+    q = N(mu + delta_mu, var * delta_var)
+
+    Args:
+        delta_mu (torch.Tensor): Difference of mu.
+        delta_var(torch.Tensor): Difference of variance.
+        var (torch.Tensor): Variance of original normnal.
+        reduce (bool, optional): If `True`, sum calculated loss for each
+            data point.
+
+    Returns:
+        kl (torch.Tensor): Calculated kl divergence for each data.
+    """
+
+    kl = (delta_mu ** 2 / var + delta_var - delta_var.log() - 1) * 0.5
+
+    if reduce:
+        return kl.sum(-1)
+    return kl
+
+
 def nll_bernoulli(x: Tensor, probs: Tensor, reduce: bool = True) -> Tensor:
     """Negative log likelihood for Bernoulli distribution.
 
