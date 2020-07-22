@@ -17,6 +17,7 @@ class TestNouveauVAE(unittest.TestCase):
 
         self.assertTupleEqual(recon.size(), x.size())
         self.assertFalse(torch.isnan(recon).any())
+        self.assertTrue((recon >= 0).all() and (recon <= 1).all())
 
         self.assertSetEqual(
             set(loss_dict.keys()),
