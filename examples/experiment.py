@@ -243,10 +243,10 @@ class Trainer:
         for data, _ in self.test_loader:
             with torch.no_grad():
                 # Data to device
-                data = data.to(self.device, beta=self.beta)
+                data = data.to(self.device)
 
                 # Calculate loss
-                loss_dict = self.model(data)
+                loss_dict = self.model(data, beta=self.beta)
                 loss = loss_dict["loss"]
 
             # Update progress bar
