@@ -255,7 +255,7 @@ class HierarchicalLayer(nn.Module):
         return x, delta_mu, delta_logvar
 
     def inverse(self, x: Tensor, delta_mu: Optional[Tensor] = None,
-                delta_logvar: Optional[Tensor] = None
+                delta_logvar: Optional[Tensor] = None, var_lb: float = 1e-6
                 ) -> Tuple[Tensor, Tensor]:
         """Inverse computation for generation.
 
@@ -264,6 +264,7 @@ class HierarchicalLayer(nn.Module):
             delta_mu (torch.Tensor, optional): Encoded delta mu of q(z|x).
             delta_var (torch.Tensor, optional): Encoded delta log variance of
                 q(z|x).
+            var_lb (float, optional): Lower bounds of variance.
 
         Returns:
             x (torch.Tensor): Generated samples.
@@ -276,10 +277,10 @@ class HierarchicalLayer(nn.Module):
         # Concat
         if delta_mu is not None and delta_logvar is not None:
             mu = p_mu + delta_mu
-            var = F.softplus(p_logvar + delta_logvar)
+            var = F.softplus(p_logvar + delta_logvar) + var_lb
         else:
             mu = p_mu
-            var = F.softplus(p_logvar) * self.temperature ** 2
+            var = F.softplus(p_logvar) * self.temperature ** 2 + var_lb
 
         # Sample latents
         z = mu + var ** 0.5 + torch.randn_like(var)
@@ -298,8 +299,8 @@ class HierarchicalLayer(nn.Module):
         # Calculate kl
         if delta_mu is not None and delta_logvar is not None:
             kl_loss = kl_divergence_normal_diff(
-                delta_mu, F.softplus(delta_logvar), F.softplus(p_logvar),
-                reduce=False)
+                delta_mu, F.softplus(delta_logvar),
+                F.softplus(p_logvar) + var_lb, reduce=False)
         else:
             kl_loss = torch.zeros_like(p_mu)
         kl_loss = kl_loss.sum(dim=[1, 2, 3])
