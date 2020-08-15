@@ -39,7 +39,11 @@ class Config:
 
     # From config
     betavae_params: dict
+    avb_params: dict
+    nvae_params: dict
     optimizer_params: dict
+    adv_optimizer_params: dict
+    beta_annealer_params: dict
     max_grad_value: float
     max_grad_norm: float
 
@@ -70,12 +74,15 @@ class Trainer:
         self.train_loader: dataloader.DataLoader
         self.test_loader: dataloader.DataLoader
         self.optimizer: optimizer.Optimizer
+        self.adv_optimizer: Optional[optimizer.Optimizer]
+        self.beta_anneler: vaelib.LinearAnnealer
         self.device: torch.device
         self.pbar: tqdm.tqdm
 
         # Training utils
         self.global_steps = 0
         self.postfix: Dict[str, float] = {}
+        self.beta = 1.0
 
     def check_logdir(self) -> None:
         """Checks log directory.
@@ -123,8 +130,12 @@ class Trainer:
 
         self.logger.info("Load dataset")
 
-        _transform = transforms.Compose([
-            transforms.Resize(64), transforms.ToTensor()])
+        if self.config.model == "nvae":
+            _transform = transforms.Compose([
+                transforms.Resize(32), transforms.ToTensor()])
+        else:
+            _transform = transforms.Compose([
+                transforms.Resize(64), transforms.ToTensor()])
 
         # Dataset
         train_data = datasets.MNIST(
@@ -160,9 +171,12 @@ class Trainer:
             # Data to device
             data = data.to(self.device)
 
+            # Annealing
+            self.beta = next(self.beta_anneler)
+
             # Forward
             self.optimizer.zero_grad()
-            loss_dict = self.model(data)
+            loss_dict = self.model(data, beta=self.beta)
             loss = loss_dict["loss"].mean()
 
             # Backward and update
@@ -172,6 +186,20 @@ class Trainer:
             torch.nn.utils.clip_grad_value_(
                 self.model.parameters(), self.config.max_grad_value)
             self.optimizer.step()
+
+            if self.adv_optimizer is not None:
+                # Discriminator loss
+                self.adv_optimizer.zero_grad()
+                loss_dict = self.model(data)
+                loss_d = loss_dict["loss_d"].mean()
+
+                # Backward and update
+                loss_d.backward()
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.config.max_grad_norm)
+                torch.nn.utils.clip_grad_value_(
+                    self.model.parameters(), self.config.max_grad_value)
+                self.adv_optimizer.step()
 
             # Progress bar update
             self.global_steps += 1
@@ -218,7 +246,7 @@ class Trainer:
                 data = data.to(self.device)
 
                 # Calculate loss
-                loss_dict = self.model(data)
+                loss_dict = self.model(data, beta=self.beta)
                 loss = loss_dict["loss"]
 
             # Update progress bar
@@ -344,8 +372,23 @@ class Trainer:
         self.model = self.model.to(self.device)
 
         # Optimizer
-        self.optimizer = optim.Adam(
-            self.model.parameters(), **self.config.optimizer_params)
+        adv_params = self.model.adversarial_parameters()
+        if adv_params is not None:
+            # Optimzer for encoder and decoder
+            self.optimizer = optim.Adam(
+                self.model.model_parameters(), **self.config.optimizer_params)
+
+            # Optimizer for discriminator
+            self.adv_optimizer = optim.Adam(
+                adv_params, **self.config.adv_optimizer_params)
+        else:
+            self.optimizer = optim.Adam(
+                self.model.parameters(), **self.config.optimizer_params)
+            self.adv_optimizer = None
+
+        # Annealer
+        self.beta_anneler = vaelib.LinearAnnealer(
+            **self.config.beta_annealer_params)
 
         # Progress bar
         self.pbar = tqdm.tqdm(total=self.config.max_steps)

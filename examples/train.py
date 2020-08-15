@@ -49,6 +49,8 @@ def main():
     # Model
     model_dict = {
         "betavae": vaelib.BetaVAE,
+        "avb": vaelib.AVB,
+        "nvae": vaelib.NouveauVAE,
     }
     model = model_dict[args.model](**config[f"{args.model}_params"])
 
@@ -67,7 +69,7 @@ def main():
 
 
 def init_args():
-    parser = argparse.ArgumentParser(description="VAE training")
+    parser = argparse.ArgumentParser(description="ML training")
     parser.add_argument("--cuda", type=str, default="0",
                         help="Number of CUDA device with comma separation, "
                              "ex. '0,1'. 'null' means cpu device.")
