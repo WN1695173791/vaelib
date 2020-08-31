@@ -3,19 +3,25 @@ from setuptools import setup, find_packages
 
 
 install_requires = [
-    "torch>=1.6.0",
+    "torch>=1.6",
 ]
 
 
 extras_require = {
-    "dev": ["pytest"]
+    "testing": ["pytest"],
+    "example": [
+        "torchvision>=0.7",
+        "matplotlib>=3.2",
+        "tqdm>=4.47",
+        "tensorboardX>=2.1",
+    ],
 }
 
 
 setup(
     name="vaelib",
     version="0.1",
-    description="VAE models by PyTorch",
+    description="VAE models in PyTorch",
     packages=find_packages(),
     install_requires=install_requires,
     extras_require=extras_require,
