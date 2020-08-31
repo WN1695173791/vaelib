@@ -5,15 +5,15 @@ VAE library in PyTorch.
 
 # Requirements
 
-* Python == 3.7
-* PyTorch == 1.6.0
+* Python >= 3.7
+* PyTorch >= 1.6
 
 Additional requirements for example codes.
 
-* torchvision == 0.7.0
-* matplotlib == 3.2.2
-* tqdm == 4.46.1
-* tensorboardX == 2.0
+* torchvision >= 0.7
+* matplotlib >= 3.2
+* tqdm >= 4.47
+* tensorboardX >= 2.1
 
 # Setup
 
@@ -43,7 +43,7 @@ docker run --gpus all -it vaelib bash
 Install other requirements for example code.
 
 ```bash
-pip3 install torchvision==0.7.0 matplotlib==3.2.2 tqdm==4.46.1  tensorboardX==2.0
+pip3 install ".[example]"
 ```
 
 # Experiments
