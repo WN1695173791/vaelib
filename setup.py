@@ -1,4 +1,3 @@
-
 from setuptools import setup, find_packages
 
 
@@ -8,7 +7,12 @@ install_requires = [
 
 
 extras_require = {
-    "testing": ["pytest"],
+    "testing": [
+        "pytest",
+        "black",
+        "flake8",
+        "mypy",
+    ],
     "example": [
         "torchvision>=0.7",
         "matplotlib>=3.2",

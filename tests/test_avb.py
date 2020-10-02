@@ -1,4 +1,3 @@
-
 import torch
 import vaelib
 
@@ -11,8 +10,7 @@ def test_inference() -> None:
     assert recon.size() == x.size()
     assert z.size() == (10, 10)
 
-    assert (set(loss_dict.keys())
-            == set(["loss", "ce_loss", "logits", "loss_d"]))
+    assert set(loss_dict.keys()) == set(["loss", "ce_loss", "logits", "loss_d"])
     assert loss_dict["loss"].size() == (10,)
     assert loss_dict["ce_loss"].size() == (10,)
     assert loss_dict["logits"].size() == (10,)
