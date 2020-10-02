@@ -1,4 +1,3 @@
-
 """Trainer class."""
 
 from typing import Dict, DefaultDict, Union, Optional
@@ -92,7 +91,8 @@ class Trainer:
         """
 
         self.logdir = pathlib.Path(
-            self.config.logdir, time.strftime("%Y%m%d%H%M"))
+            self.config.logdir, time.strftime("%Y%m%d%H%M")
+        )
         self.logdir.mkdir(parents=True, exist_ok=True)
 
     def init_logger(self) -> None:
@@ -105,16 +105,20 @@ class Trainer:
         # Set stream handler (console)
         sh = logging.StreamHandler()
         sh.setLevel(logging.INFO)
-        sh_fmt = logging.Formatter("%(asctime)s - %(module)s.%(funcName)s "
-                                   "- %(levelname)s : %(message)s")
+        sh_fmt = logging.Formatter(
+            "%(asctime)s - %(module)s.%(funcName)s "
+            "- %(levelname)s : %(message)s"
+        )
         sh.setFormatter(sh_fmt)
         logger.addHandler(sh)
 
         # Set file handler (log file)
         fh = logging.FileHandler(filename=self.logdir / "training.log")
         fh.setLevel(logging.DEBUG)
-        fh_fmt = logging.Formatter("%(asctime)s - %(module)s.%(funcName)s "
-                                   "- %(levelname)s : %(message)s")
+        fh_fmt = logging.Formatter(
+            "%(asctime)s - %(module)s.%(funcName)s "
+            "- %(levelname)s : %(message)s"
+        )
         fh.setFormatter(fh_fmt)
         logger.addHandler(fh)
 
@@ -131,19 +135,27 @@ class Trainer:
         self.logger.info("Load dataset")
 
         if self.config.model == "nvae":
-            _transform = transforms.Compose([
-                transforms.Resize(32), transforms.ToTensor()])
+            _transform = transforms.Compose(
+                [transforms.Resize(32), transforms.ToTensor()]
+            )
         else:
-            _transform = transforms.Compose([
-                transforms.Resize(64), transforms.ToTensor()])
+            _transform = transforms.Compose(
+                [transforms.Resize(64), transforms.ToTensor()]
+            )
 
         # Dataset
         train_data = datasets.MNIST(
-            root=self.config.data_dir, train=True, download=True,
-            transform=_transform)
+            root=self.config.data_dir,
+            train=True,
+            download=True,
+            transform=_transform,
+        )
         test_data = datasets.MNIST(
-            root=self.config.data_dir, train=False, download=True,
-            transform=_transform)
+            root=self.config.data_dir,
+            train=False,
+            download=True,
+            transform=_transform,
+        )
 
         # Params for GPU
         if torch.cuda.is_available():
@@ -152,12 +164,18 @@ class Trainer:
             kwargs = {}
 
         self.train_loader = torch.utils.data.DataLoader(
-            train_data, shuffle=True, batch_size=self.config.batch_size,
-            **kwargs)
+            train_data,
+            shuffle=True,
+            batch_size=self.config.batch_size,
+            **kwargs,
+        )
 
         self.test_loader = torch.utils.data.DataLoader(
-            test_data, shuffle=False, batch_size=self.config.batch_size,
-            **kwargs)
+            test_data,
+            shuffle=False,
+            batch_size=self.config.batch_size,
+            **kwargs,
+        )
 
         self.logger.info(f"Train dataset size: {len(self.train_loader)}")
         self.logger.info(f"Test dataset size: {len(self.test_loader)}")
@@ -182,9 +200,11 @@ class Trainer:
             # Backward and update
             loss.backward()
             torch.nn.utils.clip_grad_norm_(
-                self.model.parameters(), self.config.max_grad_norm)
+                self.model.parameters(), self.config.max_grad_norm
+            )
             torch.nn.utils.clip_grad_value_(
-                self.model.parameters(), self.config.max_grad_value)
+                self.model.parameters(), self.config.max_grad_value
+            )
             self.optimizer.step()
 
             if self.adv_optimizer is not None:
@@ -196,9 +216,11 @@ class Trainer:
                 # Backward and update
                 loss_d.backward()
                 torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(), self.config.max_grad_norm)
+                    self.model.parameters(), self.config.max_grad_norm
+                )
                 torch.nn.utils.clip_grad_value_(
-                    self.model.parameters(), self.config.max_grad_value)
+                    self.model.parameters(), self.config.max_grad_value
+                )
                 self.adv_optimizer.step()
 
             # Progress bar update
@@ -211,7 +233,8 @@ class Trainer:
             # Summary
             for key, value in loss_dict.items():
                 self.writer.add_scalar(
-                    f"train/{key}", value.mean(), self.global_steps)
+                    f"train/{key}", value.mean(), self.global_steps
+                )
 
             # Test
             if self.global_steps % self.config.test_interval == 0:
@@ -224,7 +247,8 @@ class Trainer:
                 loss_logger = {k: v.mean() for k, v in loss_dict.items()}
                 self.logger.debug(
                     f"Train loss (steps={self.global_steps}): "
-                    f"{loss_logger}")
+                    f"{loss_logger}"
+                )
 
                 self.save_plots()
 
@@ -260,11 +284,14 @@ class Trainer:
         # Summary
         for key, value in loss_logger.items():
             self.writer.add_scalar(
-                f"test/{key}", value / (len(self.test_loader)),
-                self.global_steps)
+                f"test/{key}",
+                value / (len(self.test_loader)),
+                self.global_steps,
+            )
 
         self.logger.debug(
-            f"Test loss (steps={self.global_steps}): {loss_logger}")
+            f"Test loss (steps={self.global_steps}): {loss_logger}"
+        )
 
     def save_checkpoint(self) -> None:
         """Saves trained model and optimizer to checkpoint file.
@@ -376,19 +403,23 @@ class Trainer:
         if adv_params is not None:
             # Optimzer for encoder and decoder
             self.optimizer = optim.Adam(
-                self.model.model_parameters(), **self.config.optimizer_params)
+                self.model.model_parameters(), **self.config.optimizer_params
+            )
 
             # Optimizer for discriminator
             self.adv_optimizer = optim.Adam(
-                adv_params, **self.config.adv_optimizer_params)
+                adv_params, **self.config.adv_optimizer_params
+            )
         else:
             self.optimizer = optim.Adam(
-                self.model.parameters(), **self.config.optimizer_params)
+                self.model.parameters(), **self.config.optimizer_params
+            )
             self.adv_optimizer = None
 
         # Annealer
         self.beta_anneler = vaelib.LinearAnnealer(
-            **self.config.beta_annealer_params)
+            **self.config.beta_annealer_params
+        )
 
         # Progress bar
         self.pbar = tqdm.tqdm(total=self.config.max_steps)

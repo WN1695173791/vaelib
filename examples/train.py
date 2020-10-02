@@ -1,4 +1,3 @@
-
 """Training method."""
 
 import argparse
@@ -24,13 +23,17 @@ def main():
 
     # Configs
     config_path = pathlib.Path(
-        os.getenv("CONFIG_PATH", "./examples/config.json"))
+        os.getenv("CONFIG_PATH", "./examples/config.json")
+    )
     with config_path.open() as f:
         config = json.load(f)
 
     # Path
-    logdir = str(pathlib.Path(os.getenv("LOGDIR", "./logs/"),
-                              os.getenv("EXPERIMENT_NAME", "tmp")))
+    logdir = str(
+        pathlib.Path(
+            os.getenv("LOGDIR", "./logs/"), os.getenv("EXPERIMENT_NAME", "tmp")
+        )
+    )
     dataset_name = os.getenv("DATASET_NAME", "mnist")
     data_dir = pathlib.Path(os.getenv("DATASET_DIR", "./data/"), dataset_name)
 
@@ -70,21 +73,35 @@ def main():
 
 def init_args():
     parser = argparse.ArgumentParser(description="ML training")
-    parser.add_argument("--cuda", type=str, default="0",
-                        help="Number of CUDA device with comma separation, "
-                             "ex. '0,1'. 'null' means cpu device.")
-    parser.add_argument("--model", type=str, default="betavae",
-                        help="Model name.")
-    parser.add_argument("--seed", type=int, default=0,
-                        help="Random seed.")
-    parser.add_argument("--batch-size", type=int, default=64,
-                        help="Batch size.")
-    parser.add_argument("--max-steps", type=int, default=2,
-                        help="Number of gradient steps.")
-    parser.add_argument("--test-interval", type=int, default=2,
-                        help="Interval steps for testing.")
-    parser.add_argument("--save-interval", type=int, default=2,
-                        help="Interval steps for saving checkpoints.")
+    parser.add_argument(
+        "--cuda",
+        type=str,
+        default="0",
+        help="Number of CUDA device with comma separation, "
+        "ex. '0,1'. 'null' means cpu device.",
+    )
+    parser.add_argument(
+        "--model", type=str, default="betavae", help="Model name."
+    )
+    parser.add_argument("--seed", type=int, default=0, help="Random seed.")
+    parser.add_argument(
+        "--batch-size", type=int, default=64, help="Batch size."
+    )
+    parser.add_argument(
+        "--max-steps", type=int, default=2, help="Number of gradient steps."
+    )
+    parser.add_argument(
+        "--test-interval",
+        type=int,
+        default=2,
+        help="Interval steps for testing.",
+    )
+    parser.add_argument(
+        "--save-interval",
+        type=int,
+        default=2,
+        help="Interval steps for saving checkpoints.",
+    )
 
     return parser.parse_args()
 
