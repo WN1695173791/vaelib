@@ -1,4 +1,3 @@
-
 import torch
 import vaelib
 
@@ -12,8 +11,9 @@ def test_inference() -> None:
     assert not torch.isnan(recon).any()
     assert (recon >= 0).all() and (recon <= 1).all()
 
-    assert (set(loss_dict.keys())
-            == set(["loss", "bit_loss", "kl_loss", "nll_loss", "sr_loss"]))
+    assert set(loss_dict.keys()) == set(
+        ["loss", "bit_loss", "kl_loss", "nll_loss", "sr_loss"]
+    )
 
     keys = ["loss", "bit_loss", "kl_loss", "nll_loss", "sr_loss"]
     for k in keys:
