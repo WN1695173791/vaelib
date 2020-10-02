@@ -1,4 +1,3 @@
-
 """Base class for VAE models."""
 
 from typing import Dict, Iterator, Optional, Tuple
@@ -19,8 +18,9 @@ class BaseVAE(nn.Module):
         self.encoder: nn.Module
         self.decoder: nn.Module
 
-    def forward(self, x: Tensor, y: Optional[Tensor] = None, beta: float = 1.0
-                ) -> Dict[str, Tensor]:
+    def forward(
+        self, x: Tensor, y: Optional[Tensor] = None, beta: float = 1.0
+    ) -> Dict[str, Tensor]:
         """Loss function for ELBO loss.
 
         Args:
@@ -52,9 +52,9 @@ class BaseVAE(nn.Module):
 
         return recon
 
-    def inference(self, x: Tensor, y: Optional[Tensor] = None,
-                  beta: float = 1.0
-                  ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
+    def inference(
+        self, x: Tensor, y: Optional[Tensor] = None, beta: float = 1.0
+    ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
         """Inferences reconstruction with ELBO loss calculation.
 
         Args:
@@ -70,8 +70,9 @@ class BaseVAE(nn.Module):
 
         raise NotImplementedError
 
-    def sample(self, batch_size: int = 1, y: Optional[Tensor] = None
-               ) -> Tensor:
+    def sample(
+        self, batch_size: int = 1, y: Optional[Tensor] = None
+    ) -> Tensor:
         """Samples data from model.
 
         Args:
@@ -92,7 +93,8 @@ class BaseVAE(nn.Module):
         """
 
         return itertools.chain(
-                   self.encoder.parameters(), self.decoder.parameters())
+            self.encoder.parameters(), self.decoder.parameters()
+        )
 
     def adversarial_parameters(self) -> Optional[Iterator]:
         """Model parameters for adversarial training.
@@ -104,8 +106,9 @@ class BaseVAE(nn.Module):
         return None
 
 
-def kl_divergence_normal(mu0: Tensor, var0: Tensor, mu1: Tensor, var1: Tensor,
-                         reduce: bool = True) -> Tensor:
+def kl_divergence_normal(
+    mu0: Tensor, var0: Tensor, mu1: Tensor, var1: Tensor, reduce: bool = True
+) -> Tensor:
     """Kullback Leibler divergence for 1-D Normal distributions.
 
     p = N(mu0, var0)
@@ -132,8 +135,9 @@ def kl_divergence_normal(mu0: Tensor, var0: Tensor, mu1: Tensor, var1: Tensor,
     return kl
 
 
-def kl_divergence_normal_diff(delta_mu: Tensor, delta_var: Tensor, var: Tensor,
-                              reduce: bool = True) -> Tensor:
+def kl_divergence_normal_diff(
+    delta_mu: Tensor, delta_var: Tensor, var: Tensor, reduce: bool = True
+) -> Tensor:
     """Kullback Leibler divergence for 1-D normal with parameter differences.
 
     p = N(mu, var)
@@ -184,8 +188,13 @@ def nll_bernoulli(x: Tensor, probs: Tensor, reduce: bool = True) -> Tensor:
     return nll
 
 
-def nll_logistic(x: Tensor, mu: Tensor, scale: Tensor, reduce: bool = True,
-                 binsize: float = 1 / 256) -> Tensor:
+def nll_logistic(
+    x: Tensor,
+    mu: Tensor,
+    scale: Tensor,
+    reduce: bool = True,
+    binsize: float = 1 / 256,
+) -> Tensor:
     """Negative log likelihood for discretized logsitc.
 
 
@@ -205,7 +214,8 @@ def nll_logistic(x: Tensor, mu: Tensor, scale: Tensor, reduce: bool = True,
 
     x = (torch.floor(x / binsize) * binsize - mu) / scale
     nll = -torch.log(
-        torch.sigmoid(x + binsize / scale) - torch.sigmoid(x) + 1e-7)
+        torch.sigmoid(x + binsize / scale) - torch.sigmoid(x) + 1e-7
+    )
 
     if reduce:
         return nll.sum(-1)

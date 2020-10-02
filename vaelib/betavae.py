@@ -1,4 +1,3 @@
-
 """Beta VAE class.
 
 β-VAE: LEARNING BASIC VISUAL CONCEPTS WITH A CONSTRAINED VARIATIONAL FRAMEWORK
@@ -121,9 +120,14 @@ class BetaVAE(BaseVAE):
         do_anneal (bool, optional): If `True`, beta is given from kwargs.
     """
 
-    def __init__(self, in_channels: int = 3, z_dim: int = 10,
-                 beta: float = 10.0, capacity: float = 0.0,
-                 do_anneal: bool = False):
+    def __init__(
+        self,
+        in_channels: int = 3,
+        z_dim: int = 10,
+        beta: float = 10.0,
+        capacity: float = 0.0,
+        do_anneal: bool = False,
+    ):
         super().__init__()
 
         self.beta = beta
@@ -138,9 +142,9 @@ class BetaVAE(BaseVAE):
         self.register_buffer("p_mu", torch.zeros(1, z_dim))
         self.register_buffer("p_var", torch.ones(1, z_dim))
 
-    def inference(self, x: Tensor, y: Optional[Tensor] = None,
-                  beta: float = 1.0
-                  ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
+    def inference(
+        self, x: Tensor, y: Optional[Tensor] = None, beta: float = 1.0
+    ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
         """Inferences reconstruction with ELBO loss calculation.
 
         Args:
@@ -169,13 +173,17 @@ class BetaVAE(BaseVAE):
         kl_loss = kl_divergence_normal(z_mu, z_var, self.p_mu, self.p_var)
         kl_loss = beta * (kl_loss - self.capacity).abs()
 
-        loss_dict = {"loss": ce_loss + kl_loss, "kl_loss": kl_loss,
-                     "ce_loss": ce_loss}
+        loss_dict = {
+            "loss": ce_loss + kl_loss,
+            "kl_loss": kl_loss,
+            "ce_loss": ce_loss,
+        }
 
         return (recon, z), loss_dict
 
-    def sample(self, batch_size: int = 1, y: Optional[Tensor] = None
-               ) -> Tensor:
+    def sample(
+        self, batch_size: int = 1, y: Optional[Tensor] = None
+    ) -> Tensor:
         """Samples data from model.
 
         Args:

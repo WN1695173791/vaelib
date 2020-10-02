@@ -1,4 +1,3 @@
-
 """Adversarial Variational Bayes (AVB).
 
 Adversarial Variational Bayes: Unifying Variational Autoencoders and Generative
@@ -207,9 +206,9 @@ class AVB(BaseVAE):
         self.register_buffer("p_mu", torch.zeros(1, z_dim))
         self.register_buffer("p_var", torch.ones(1, z_dim))
 
-    def inference(self, x: Tensor, y: Optional[Tensor] = None,
-                  beta: float = 1.0
-                  ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
+    def inference(
+        self, x: Tensor, y: Optional[Tensor] = None, beta: float = 1.0
+    ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
         """Inferences reconstruction with ELBO loss calculation.
 
         Args:
@@ -252,21 +251,26 @@ class AVB(BaseVAE):
 
         # Discriminator loss
         log_d_q = self.bce_loss(
-            self.discriminator(x, z_q.detach()), z_q.new_ones((batch, 1)))
+            self.discriminator(x, z_q.detach()), z_q.new_ones((batch, 1))
+        )
         log_d_p = self.bce_loss(
-            self.discriminator(x, z_p), z_p.new_zeros((batch, 1)))
+            self.discriminator(x, z_p), z_p.new_zeros((batch, 1))
+        )
         loss_d = (log_d_q + log_d_p).sum(dim=1)
 
         # Returned loss
         loss_dict = {
-            "loss": logits + ce_loss, "ce_loss": ce_loss, "logits": logits,
+            "loss": logits + ce_loss,
+            "ce_loss": ce_loss,
+            "logits": logits,
             "loss_d": loss_d,
         }
 
         return (recon, z_q), loss_dict
 
-    def sample(self, batch_size: int = 1, y: Optional[Tensor] = None
-               ) -> Tensor:
+    def sample(
+        self, batch_size: int = 1, y: Optional[Tensor] = None
+    ) -> Tensor:
         """Samples data from model.
 
         Args:

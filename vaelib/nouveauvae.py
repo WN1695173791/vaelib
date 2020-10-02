@@ -1,4 +1,3 @@
-
 """Nouveau VAE (NVAE).
 
 ref)
@@ -108,29 +107,27 @@ class GenerativeResidualCell(nn.Module):
         self.resblock = nn.Sequential(
             # BN
             nn.BatchNorm2d(in_channels),
-
             # Conv. 1x1
             nn.Conv2d(in_channels, expansion_dim * in_channels, 1),
-
             # BN - Swish
             nn.BatchNorm2d(expansion_dim * in_channels),
             SwishActivation(),
-
             # dep. sep. conv. 5x5
-            nn.Conv2d(expansion_dim * in_channels, expansion_dim * in_channels,
-                      kernel_size=5, stride=1, padding=2,
-                      groups=expansion_dim * in_channels),
-
+            nn.Conv2d(
+                expansion_dim * in_channels,
+                expansion_dim * in_channels,
+                kernel_size=5,
+                stride=1,
+                padding=2,
+                groups=expansion_dim * in_channels,
+            ),
             # BN - Swish
             nn.BatchNorm2d(expansion_dim * in_channels),
             SwishActivation(),
-
             # Conv. 1x1
             nn.Conv2d(expansion_dim * in_channels, in_channels, 1),
-
             # BN
             nn.BatchNorm2d(in_channels),
-
             # SE
             SELayer(in_channels),
         )
@@ -162,17 +159,13 @@ class EncodingResidualCell(nn.Module):
             # BN - Swish
             nn.BatchNorm2d(in_channels),
             SwishActivation(),
-
             # Conv. 3x3
             nn.Conv2d(in_channels, in_channels, 3, stride=1, padding=1),
-
             # BN - Swish
             nn.BatchNorm2d(in_channels),
             SwishActivation(),
-
             # Conv. 3x3
             nn.Conv2d(in_channels, in_channels, 3, stride=1, padding=1),
-
             # SE
             SELayer(in_channels),
         )
@@ -203,17 +196,28 @@ class HierarchicalLayer(nn.Module):
         up_channels (int, optional): Number of channels in upsampled inputs.
     """
 
-    def __init__(self, in_channels: int, z_channels: int, expansion_dim: int,
-                 num_cells: int, temperature: float = 1.0,
-                 do_downsample: bool = False, up_channels: int = 3):
+    def __init__(
+        self,
+        in_channels: int,
+        z_channels: int,
+        expansion_dim: int,
+        num_cells: int,
+        temperature: float = 1.0,
+        do_downsample: bool = False,
+        up_channels: int = 3,
+    ):
         super().__init__()
 
         # Residual blocks
         self.inference_block = nn.ModuleList(
-            [EncodingResidualCell(in_channels) for _ in range(num_cells)])
+            [EncodingResidualCell(in_channels) for _ in range(num_cells)]
+        )
         self.generative_block = nn.ModuleList(
-            [GenerativeResidualCell(in_channels, expansion_dim)
-             for _ in range(num_cells)])
+            [
+                GenerativeResidualCell(in_channels, expansion_dim)
+                for _ in range(num_cells)
+            ]
+        )
 
         # Conv for z params
         self.conv_inf = nn.Conv2d(in_channels, z_channels * 2, 1)
@@ -223,9 +227,11 @@ class HierarchicalLayer(nn.Module):
         # Down and up sample function, used only if do_downsample is True
         self.do_downsample = do_downsample
         self.down_sample = nn.Conv2d(
-            up_channels, in_channels, kernel_size=1, stride=2)
+            up_channels, in_channels, kernel_size=1, stride=2
+        )
         self.up_sample = nn.ConvTranspose2d(
-            in_channels, up_channels, kernel_size=4, stride=2, padding=1)
+            in_channels, up_channels, kernel_size=4, stride=2, padding=1
+        )
 
         # Temperature for prior
         self.temperature = temperature
@@ -254,9 +260,13 @@ class HierarchicalLayer(nn.Module):
 
         return x, delta_mu, delta_logvar
 
-    def inverse(self, x: Tensor, delta_mu: Optional[Tensor] = None,
-                delta_logvar: Optional[Tensor] = None, var_lb: float = 1e-6
-                ) -> Tuple[Tensor, Tensor]:
+    def inverse(
+        self,
+        x: Tensor,
+        delta_mu: Optional[Tensor] = None,
+        delta_logvar: Optional[Tensor] = None,
+        var_lb: float = 1e-6,
+    ) -> Tuple[Tensor, Tensor]:
         """Inverse computation for generation.
 
         Args:
@@ -299,8 +309,11 @@ class HierarchicalLayer(nn.Module):
         # Calculate kl
         if delta_mu is not None and delta_logvar is not None:
             kl_loss = kl_divergence_normal_diff(
-                delta_mu, F.softplus(delta_logvar),
-                F.softplus(p_logvar) + var_lb, reduce=False)
+                delta_mu,
+                F.softplus(delta_logvar),
+                F.softplus(p_logvar) + var_lb,
+                reduce=False,
+            )
         else:
             kl_loss = torch.zeros_like(p_mu)
         kl_loss = kl_loss.sum(dim=[1, 2, 3])
@@ -325,11 +338,19 @@ class NouveauVAE(BaseVAE):
             cell.
     """
 
-    def __init__(self, in_channels: int = 3, in_dims: int = 32,
-                 num_nflows: int = 0, num_groups: Iterable = (30,),
-                 z_channels: int = 20, enc_channels: int = 128,
-                 num_rescells: int = 2, annealing_lmd: float = 0.1,
-                 temperature: float = 0.7, expansion_dim: int = 3):
+    def __init__(
+        self,
+        in_channels: int = 3,
+        in_dims: int = 32,
+        num_nflows: int = 0,
+        num_groups: Iterable = (30,),
+        z_channels: int = 20,
+        enc_channels: int = 128,
+        num_rescells: int = 2,
+        annealing_lmd: float = 0.1,
+        temperature: float = 0.7,
+        expansion_dim: int = 3,
+    ):
         super().__init__()
 
         # Hierarchical blocks
@@ -339,18 +360,41 @@ class NouveauVAE(BaseVAE):
                 if j == 0:
                     # Convert channel size
                     if i == 0:
-                        layers.append(HierarchicalLayer(
-                            enc_channels, z_channels, expansion_dim,
-                            num_rescells, temperature, True, in_channels))
+                        layers.append(
+                            HierarchicalLayer(
+                                enc_channels,
+                                z_channels,
+                                expansion_dim,
+                                num_rescells,
+                                temperature,
+                                True,
+                                in_channels,
+                            )
+                        )
                     else:
-                        layers.append(HierarchicalLayer(
-                            enc_channels * 2, z_channels, expansion_dim,
-                            num_rescells, temperature, True, enc_channels))
+                        layers.append(
+                            HierarchicalLayer(
+                                enc_channels * 2,
+                                z_channels,
+                                expansion_dim,
+                                num_rescells,
+                                temperature,
+                                True,
+                                enc_channels,
+                            )
+                        )
                         enc_channels *= 2
                 else:
-                    layers.append(HierarchicalLayer(
-                        enc_channels, z_channels, expansion_dim, num_rescells,
-                        temperature, do_downsample=False))
+                    layers.append(
+                        HierarchicalLayer(
+                            enc_channels,
+                            z_channels,
+                            expansion_dim,
+                            num_rescells,
+                            temperature,
+                            do_downsample=False,
+                        )
+                    )
 
         self.layers = nn.ModuleList(layers)
 
@@ -364,9 +408,9 @@ class NouveauVAE(BaseVAE):
         # Log scale for outputs
         self.log_scale = nn.Parameter(torch.zeros(1, 1, 1, 1))
 
-    def inference(self, x: Tensor, y: Optional[Tensor] = None,
-                  beta: float = 1.0
-                  ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
+    def inference(
+        self, x: Tensor, y: Optional[Tensor] = None, beta: float = 1.0
+    ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
         """Inferences reconstruction with ELBO loss calculation.
 
         Args:
@@ -403,7 +447,8 @@ class NouveauVAE(BaseVAE):
 
         # NLL loss
         nll_loss = nll_logistic(
-            recon, inputs, self.log_scale.exp(), reduce=False)
+            recon, inputs, self.log_scale.exp(), reduce=False
+        )
         nll_loss = nll_loss.sum(dim=[1, 2, 3])
 
         # KL annealing
@@ -430,16 +475,22 @@ class NouveauVAE(BaseVAE):
         bit_loss = (loss / pixel_num + math.log(256)) / math.log(2)
 
         # Loss dict
-        loss_dict = {"loss": loss, "bit_loss": bit_loss, "nll_loss": nll_loss,
-                     "kl_loss": kl_loss, "sr_loss": sr_loss}
+        loss_dict = {
+            "loss": loss,
+            "bit_loss": bit_loss,
+            "nll_loss": nll_loss,
+            "kl_loss": kl_loss,
+            "sr_loss": sr_loss,
+        }
 
         # Revert data range: [-0.5, 0.5] -> [0, 1]
         recon += 0.5
 
         return (recon,), loss_dict
 
-    def sample(self, batch_size: int = 1, y: Optional[Tensor] = None
-               ) -> Tensor:
+    def sample(
+        self, batch_size: int = 1, y: Optional[Tensor] = None
+    ) -> Tensor:
         """Samples data from model.
 
         Args:

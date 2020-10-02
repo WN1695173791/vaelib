@@ -1,4 +1,3 @@
-
 """Scheduler for training."""
 
 
@@ -28,7 +27,7 @@ class LinearAnnealer:
         self.t += 1
         value = min(
             self.init + (self.final - self.init) * self.t / self.steps,
-            self.final
+            self.final,
         )
         self.current = value
 
