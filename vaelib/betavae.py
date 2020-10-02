@@ -153,8 +153,8 @@ class BetaVAE(BaseVAE):
             beta (float, optional): Beta coefficient for KL loss.
 
         Returns:
-            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded
-                data. The first element should be reconstructed observations.
+            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded data. The
+                first element should be reconstructed observations.
             loss_dict (dict of [str, torch.Tensor]): Dict of lossses.
         """
 

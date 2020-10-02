@@ -63,8 +63,8 @@ class BaseVAE(nn.Module):
             beta (float, optional): Beta coefficient for KL loss.
 
         Returns:
-            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded
-                data. The first element should be reconstructed observations.
+            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded data. The
+                first element should be reconstructed observations.
             loss_dict (dict of [str, torch.Tensor]): Dict of lossses.
         """
 
@@ -116,8 +116,7 @@ def kl_divergence_normal(
         var0 (torch.Tensor): Diagonal variance of p.
         mu1 (torch.Tensor): Mean vector of q.
         var1 (torch.Tensor): Diagonal variance of q.
-        reduce (bool, optional): If `True`, sum calculated loss for each
-            data point.
+        reduce (bool, optional): If `True`, sum calculated loss for each data point.
 
     Returns:
         kl (torch.Tensor): Calculated kl divergence for each data.
@@ -143,8 +142,7 @@ def kl_divergence_normal_diff(
         delta_mu (torch.Tensor): Difference of mu.
         delta_var(torch.Tensor): Difference of variance.
         var (torch.Tensor): Variance of original normnal.
-        reduce (bool, optional): If `True`, sum calculated loss for each
-            data point.
+        reduce (bool, optional): If `True`, sum calculated loss for each data point.
 
     Returns:
         kl (torch.Tensor): Calculated kl divergence for each data.
@@ -167,8 +165,7 @@ def nll_bernoulli(x: Tensor, probs: Tensor, reduce: bool = True) -> Tensor:
     Args:
         x (torch.Tensor): Inputs tensor, size `(*, dim)`.
         probs (torch.Tensor): Probability parameter, size `(*, dim)`.
-        reduce (bool, optional): If `True`, sum calculated loss for each
-            data point.
+        reduce (bool, optional): If `True`, sum calculated loss for each data point.
 
     Returns:
         nll (torch.Tensor): Calculated nll for each data, size `(*,)` if
@@ -200,8 +197,7 @@ def nll_logistic(
         x (torch.Tensor): Inputs tensor, size `(*, dim)`.
         mu (torch.Tensor): Mean of logsitc function, size `(*, dim)`.
         scale (torch.Tensor): Scale of logsitc function, size `(*, dim)`.
-        reduce (bool, optional): If `True`, sum calculated loss for each
-            data point.
+        reduce (bool, optional): If `True`, sum calculated loss for each data point.
 
     Returns:
         nll (torch.Tensor): Calculated nll for each data, size `(*,)` if
