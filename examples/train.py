@@ -22,17 +22,13 @@ def main():
     args = init_args()
 
     # Configs
-    config_path = pathlib.Path(
-        os.getenv("CONFIG_PATH", "./examples/config.json")
-    )
+    config_path = pathlib.Path(os.getenv("CONFIG_PATH", "./examples/config.json"))
     with config_path.open() as f:
         config = json.load(f)
 
     # Path
     logdir = str(
-        pathlib.Path(
-            os.getenv("LOGDIR", "./logs/"), os.getenv("EXPERIMENT_NAME", "tmp")
-        )
+        pathlib.Path(os.getenv("LOGDIR", "./logs/"), os.getenv("EXPERIMENT_NAME", "tmp"))
     )
     dataset_name = os.getenv("DATASET_NAME", "mnist")
     data_dir = pathlib.Path(os.getenv("DATASET_DIR", "./data/"), dataset_name)
@@ -80,13 +76,9 @@ def init_args():
         help="Number of CUDA device with comma separation, "
         "ex. '0,1'. 'null' means cpu device.",
     )
-    parser.add_argument(
-        "--model", type=str, default="betavae", help="Model name."
-    )
+    parser.add_argument("--model", type=str, default="betavae", help="Model name.")
     parser.add_argument("--seed", type=int, default=0, help="Random seed.")
-    parser.add_argument(
-        "--batch-size", type=int, default=64, help="Batch size."
-    )
+    parser.add_argument("--batch-size", type=int, default=64, help="Batch size.")
     parser.add_argument(
         "--max-steps", type=int, default=2, help="Number of gradient steps."
     )

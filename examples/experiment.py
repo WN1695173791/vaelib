@@ -90,9 +90,7 @@ class Trainer:
         exist.
         """
 
-        self.logdir = pathlib.Path(
-            self.config.logdir, time.strftime("%Y%m%d%H%M")
-        )
+        self.logdir = pathlib.Path(self.config.logdir, time.strftime("%Y%m%d%H%M"))
         self.logdir.mkdir(parents=True, exist_ok=True)
 
     def init_logger(self) -> None:
@@ -106,8 +104,7 @@ class Trainer:
         sh = logging.StreamHandler()
         sh.setLevel(logging.INFO)
         sh_fmt = logging.Formatter(
-            "%(asctime)s - %(module)s.%(funcName)s "
-            "- %(levelname)s : %(message)s"
+            "%(asctime)s - %(module)s.%(funcName)s " "- %(levelname)s : %(message)s"
         )
         sh.setFormatter(sh_fmt)
         logger.addHandler(sh)
@@ -116,8 +113,7 @@ class Trainer:
         fh = logging.FileHandler(filename=self.logdir / "training.log")
         fh.setLevel(logging.DEBUG)
         fh_fmt = logging.Formatter(
-            "%(asctime)s - %(module)s.%(funcName)s "
-            "- %(levelname)s : %(message)s"
+            "%(asctime)s - %(module)s.%(funcName)s " "- %(levelname)s : %(message)s"
         )
         fh.setFormatter(fh_fmt)
         logger.addHandler(fh)
@@ -232,9 +228,7 @@ class Trainer:
 
             # Summary
             for key, value in loss_dict.items():
-                self.writer.add_scalar(
-                    f"train/{key}", value.mean(), self.global_steps
-                )
+                self.writer.add_scalar(f"train/{key}", value.mean(), self.global_steps)
 
             # Test
             if self.global_steps % self.config.test_interval == 0:
@@ -246,8 +240,7 @@ class Trainer:
 
                 loss_logger = {k: v.mean() for k, v in loss_dict.items()}
                 self.logger.debug(
-                    f"Train loss (steps={self.global_steps}): "
-                    f"{loss_logger}"
+                    f"Train loss (steps={self.global_steps}): " f"{loss_logger}"
                 )
 
                 self.save_plots()
@@ -289,9 +282,7 @@ class Trainer:
                 self.global_steps,
             )
 
-        self.logger.debug(
-            f"Test loss (steps={self.global_steps}): {loss_logger}"
-        )
+        self.logger.debug(f"Test loss (steps={self.global_steps}): {loss_logger}")
 
     def save_checkpoint(self) -> None:
         """Saves trained model and optimizer to checkpoint file.
@@ -417,9 +408,7 @@ class Trainer:
             self.adv_optimizer = None
 
         # Annealer
-        self.beta_anneler = vaelib.LinearAnnealer(
-            **self.config.beta_annealer_params
-        )
+        self.beta_anneler = vaelib.LinearAnnealer(**self.config.beta_annealer_params)
 
         # Progress bar
         self.pbar = tqdm.tqdm(total=self.config.max_steps)

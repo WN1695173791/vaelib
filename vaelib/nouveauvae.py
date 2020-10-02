@@ -213,10 +213,7 @@ class HierarchicalLayer(nn.Module):
             [EncodingResidualCell(in_channels) for _ in range(num_cells)]
         )
         self.generative_block = nn.ModuleList(
-            [
-                GenerativeResidualCell(in_channels, expansion_dim)
-                for _ in range(num_cells)
-            ]
+            [GenerativeResidualCell(in_channels, expansion_dim) for _ in range(num_cells)]
         )
 
         # Conv for z params
@@ -226,9 +223,7 @@ class HierarchicalLayer(nn.Module):
 
         # Down and up sample function, used only if do_downsample is True
         self.do_downsample = do_downsample
-        self.down_sample = nn.Conv2d(
-            up_channels, in_channels, kernel_size=1, stride=2
-        )
+        self.down_sample = nn.Conv2d(up_channels, in_channels, kernel_size=1, stride=2)
         self.up_sample = nn.ConvTranspose2d(
             in_channels, up_channels, kernel_size=4, stride=2, padding=1
         )
@@ -446,9 +441,7 @@ class NouveauVAE(BaseVAE):
         recon = h.clamp(-0.5 + 1 / 512, 0.5 - 1 / 512)
 
         # NLL loss
-        nll_loss = nll_logistic(
-            recon, inputs, self.log_scale.exp(), reduce=False
-        )
+        nll_loss = nll_logistic(recon, inputs, self.log_scale.exp(), reduce=False)
         nll_loss = nll_loss.sum(dim=[1, 2, 3])
 
         # KL annealing
@@ -488,9 +481,7 @@ class NouveauVAE(BaseVAE):
 
         return (recon,), loss_dict
 
-    def sample(
-        self, batch_size: int = 1, y: Optional[Tensor] = None
-    ) -> Tensor:
+    def sample(self, batch_size: int = 1, y: Optional[Tensor] = None) -> Tensor:
         """Samples data from model.
 
         Args:

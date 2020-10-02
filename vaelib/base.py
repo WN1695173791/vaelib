@@ -70,9 +70,7 @@ class BaseVAE(nn.Module):
 
         raise NotImplementedError
 
-    def sample(
-        self, batch_size: int = 1, y: Optional[Tensor] = None
-    ) -> Tensor:
+    def sample(self, batch_size: int = 1, y: Optional[Tensor] = None) -> Tensor:
         """Samples data from model.
 
         Args:
@@ -92,9 +90,7 @@ class BaseVAE(nn.Module):
             params (iterator): Parameters of encoder and decoder.
         """
 
-        return itertools.chain(
-            self.encoder.parameters(), self.decoder.parameters()
-        )
+        return itertools.chain(self.encoder.parameters(), self.decoder.parameters())
 
     def adversarial_parameters(self) -> Optional[Iterator]:
         """Model parameters for adversarial training.
@@ -213,9 +209,7 @@ def nll_logistic(
     """
 
     x = (torch.floor(x / binsize) * binsize - mu) / scale
-    nll = -torch.log(
-        torch.sigmoid(x + binsize / scale) - torch.sigmoid(x) + 1e-7
-    )
+    nll = -torch.log(torch.sigmoid(x + binsize / scale) - torch.sigmoid(x) + 1e-7)
 
     if reduce:
         return nll.sum(-1)

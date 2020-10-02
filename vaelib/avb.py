@@ -253,9 +253,7 @@ class AVB(BaseVAE):
         log_d_q = self.bce_loss(
             self.discriminator(x, z_q.detach()), z_q.new_ones((batch, 1))
         )
-        log_d_p = self.bce_loss(
-            self.discriminator(x, z_p), z_p.new_zeros((batch, 1))
-        )
+        log_d_p = self.bce_loss(self.discriminator(x, z_p), z_p.new_zeros((batch, 1)))
         loss_d = (log_d_q + log_d_p).sum(dim=1)
 
         # Returned loss
@@ -268,9 +266,7 @@ class AVB(BaseVAE):
 
         return (recon, z_q), loss_dict
 
-    def sample(
-        self, batch_size: int = 1, y: Optional[Tensor] = None
-    ) -> Tensor:
+    def sample(self, batch_size: int = 1, y: Optional[Tensor] = None) -> Tensor:
         """Samples data from model.
 
         Args:

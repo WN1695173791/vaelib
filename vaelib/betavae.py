@@ -181,9 +181,7 @@ class BetaVAE(BaseVAE):
 
         return (recon, z), loss_dict
 
-    def sample(
-        self, batch_size: int = 1, y: Optional[Tensor] = None
-    ) -> Tensor:
+    def sample(self, batch_size: int = 1, y: Optional[Tensor] = None) -> Tensor:
         """Samples data from model.
 
         Args:
