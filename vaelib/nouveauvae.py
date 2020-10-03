@@ -1,11 +1,12 @@
 """Nouveau VAE (NVAE).
 
 ref)
-Arash Vahdat, Jan Kautz. "NVAE: A Deep Hierarchical Variational Autoencoder"
+Arash Vahdat, Jan Kautz.
+"NVAE: A Deep Hierarchical Variational Autoencoder"
 https://arxiv.org/abs/2007.03898
 
-Tim Salimans, Andrej Karpathy, Xi Chen, Diederik P. Kingma. "PixelCNN++:
-Improving the PixelCNN with Discretized Logistic Mixture Likelihood and Other
+Tim Salimans, Andrej Karpathy, Xi Chen, Diederik P. Kingma.
+"PixelCNN++: Improving the PixelCNN with Discretized Logistic Mixture Likelihood and Other
 Modifications"
 https://arxiv.org/abs/1701.05517, https://github.com/openai/pixel-cnn
 
@@ -17,8 +18,7 @@ Jie Hu, Li Shen, Samuel Albanie, Gang Sun, Enhua Wu.
 "Squeeze-and-Excitation Networks"
 https://arxiv.org/abs/1709.01507
 
-Diederik P. Kingma, Tim Salimans, Rafal Jozefowicz, Xi Chen, Ilya Sutskever,
-Max Welling.
+Diederik P. Kingma, Tim Salimans, Rafal Jozefowicz, Xi Chen, Ilya Sutskever, Max Welling.
 "Improving Variational Inference with Inverse Autoregressive Flow"
 https://arxiv.org/abs/1606.04934, https://github.com/openai/iaf
 Other implementation: https://github.com/pclucas14/iaf-vae
@@ -240,8 +240,7 @@ class HierarchicalLayer(nn.Module):
         Returns:
             x (torch.Tensor): Inferred states.
             delta_mu (torch.Tensor, optional): Encoded delta mu of q(z|x).
-            delta_var (torch.Tensor, optional): Encoded delta log variance of
-                q(z|x).
+            delta_var (torch.Tensor, optional): Encoded delta log variance of q(z|x).
         """
 
         if self.do_downsample:
@@ -267,8 +266,7 @@ class HierarchicalLayer(nn.Module):
         Args:
             x (torch.Tensor): Input tensor, size `(b, c, h, w)`.
             delta_mu (torch.Tensor, optional): Encoded delta mu of q(z|x).
-            delta_var (torch.Tensor, optional): Encoded delta log variance of
-                q(z|x).
+            delta_var (torch.Tensor, optional): Encoded delta log variance of q(z|x).
             var_lb (float, optional): Lower bounds of variance.
 
         Returns:
@@ -322,15 +320,13 @@ class NouveauVAE(BaseVAE):
     Args:
         in_channels (int, optional): Channel size of inputs.
         num_nflows (int, optional): Number of normalizing flows.
-        num_groups (iterable, optional): Iterable of number of groups in each
-            scale.
+        num_groups (iterable, optional): Iterable of number of groups in each scale.
         z_channels (int, optional): Number of channels in z.
         enc_channels (int, optional): Number of initial channels in encoder.
         num_rescells (int, optional): Number of residual cells per group.
         annealing_lmd (float, optional): Coefficient of the smoothness loss.
         temperature (float, optional): Temperature of the prior for sampling.
-        expansion_dim (int, optional): Dimension size for expansion in residual
-            cell.
+        expansion_dim (int, optional): Dimension size for expansion in residual cell.
     """
 
     def __init__(
@@ -414,8 +410,8 @@ class NouveauVAE(BaseVAE):
             beta (float, optional): Beta coefficient for KL loss.
 
         Returns:
-            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded
-                data. The first element should be reconstructed observations.
+            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded data. The
+                first element should be reconstructed observations.
             loss_dict (dict of [str, torch.Tensor]): Dict of lossses.
         """
 

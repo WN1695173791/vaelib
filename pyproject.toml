@@ -1,5 +1,5 @@
 [tool.black]
-line-length = 90
+line-length = 99
 exclude = '''
 /(
       \.eggs         # exclude a few common directories in the
