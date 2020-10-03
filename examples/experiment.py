@@ -131,13 +131,9 @@ class Trainer:
         self.logger.info("Load dataset")
 
         if self.config.model == "nvae":
-            _transform = transforms.Compose(
-                [transforms.Resize(32), transforms.ToTensor()]
-            )
+            _transform = transforms.Compose([transforms.Resize(32), transforms.ToTensor()])
         else:
-            _transform = transforms.Compose(
-                [transforms.Resize(64), transforms.ToTensor()]
-            )
+            _transform = transforms.Compose([transforms.Resize(64), transforms.ToTensor()])
 
         # Dataset
         train_data = datasets.MNIST(
@@ -195,12 +191,8 @@ class Trainer:
 
             # Backward and update
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(
-                self.model.parameters(), self.config.max_grad_norm
-            )
-            torch.nn.utils.clip_grad_value_(
-                self.model.parameters(), self.config.max_grad_value
-            )
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.max_grad_norm)
+            torch.nn.utils.clip_grad_value_(self.model.parameters(), self.config.max_grad_value)
             self.optimizer.step()
 
             if self.adv_optimizer is not None:
@@ -211,9 +203,7 @@ class Trainer:
 
                 # Backward and update
                 loss_d.backward()
-                torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(), self.config.max_grad_norm
-                )
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.max_grad_norm)
                 torch.nn.utils.clip_grad_value_(
                     self.model.parameters(), self.config.max_grad_value
                 )
@@ -239,9 +229,7 @@ class Trainer:
                 self.save_checkpoint()
 
                 loss_logger = {k: v.mean() for k, v in loss_dict.items()}
-                self.logger.debug(
-                    f"Train loss (steps={self.global_steps}): " f"{loss_logger}"
-                )
+                self.logger.debug(f"Train loss (steps={self.global_steps}): " f"{loss_logger}")
 
                 self.save_plots()
 
@@ -398,13 +386,9 @@ class Trainer:
             )
 
             # Optimizer for discriminator
-            self.adv_optimizer = optim.Adam(
-                adv_params, **self.config.adv_optimizer_params
-            )
+            self.adv_optimizer = optim.Adam(adv_params, **self.config.adv_optimizer_params)
         else:
-            self.optimizer = optim.Adam(
-                self.model.parameters(), **self.config.optimizer_params
-            )
+            self.optimizer = optim.Adam(self.model.parameters(), **self.config.optimizer_params)
             self.adv_optimizer = None
 
         # Annealer

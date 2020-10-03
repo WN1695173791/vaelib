@@ -250,9 +250,7 @@ class AVB(BaseVAE):
         ce_loss = ce_loss.sum(dim=[1, 2, 3])
 
         # Discriminator loss
-        log_d_q = self.bce_loss(
-            self.discriminator(x, z_q.detach()), z_q.new_ones((batch, 1))
-        )
+        log_d_q = self.bce_loss(self.discriminator(x, z_q.detach()), z_q.new_ones((batch, 1)))
         log_d_p = self.bce_loss(self.discriminator(x, z_p), z_p.new_zeros((batch, 1)))
         loss_d = (log_d_q + log_d_p).sum(dim=1)
 
