@@ -44,8 +44,7 @@ class BaseVAE(nn.Module):
             y (torch.Tensor, optional): Labels, size `(b,)`.
 
         Returns:
-            recon (torch.Tensor): Reconstructed observations, size
-                `(b, c, h, w)`.
+            recon (torch.Tensor): Reconstructed observations, size `(b, c, h, w)`.
         """
 
         (recon, *_), _ = self.inference(x, y)
@@ -63,8 +62,8 @@ class BaseVAE(nn.Module):
             beta (float, optional): Beta coefficient for KL loss.
 
         Returns:
-            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded data. The
-                first element should be reconstructed observations.
+            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded data. The first
+                element should be reconstructed observations.
             loss_dict (dict of [str, torch.Tensor]): Dict of lossses.
         """
 
@@ -168,8 +167,8 @@ def nll_bernoulli(x: Tensor, probs: Tensor, reduce: bool = True) -> Tensor:
         reduce (bool, optional): If `True`, sum calculated loss for each data point.
 
     Returns:
-        nll (torch.Tensor): Calculated nll for each data, size `(*,)` if
-            `reduce` is `True`, `(*, dim)` otherwise.
+        nll (torch.Tensor): Calculated nll for each data, size `(*,)` if `reduce` is `True`,
+            `(*, dim)` otherwise.
     """
 
     probs = probs.clamp(min=1e-6, max=1 - 1e-6)
@@ -200,8 +199,8 @@ def nll_logistic(
         reduce (bool, optional): If `True`, sum calculated loss for each data point.
 
     Returns:
-        nll (torch.Tensor): Calculated nll for each data, size `(*,)` if
-            `reduce` is `True`, `(*, dim)` otherwise.
+        nll (torch.Tensor): Calculated nll for each data, size `(*,)` if `reduce` is `True`,
+            `(*, dim)` otherwise.
     """
 
     x = (torch.floor(x / binsize) * binsize - mu) / scale

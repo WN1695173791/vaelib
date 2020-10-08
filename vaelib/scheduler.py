@@ -16,7 +16,6 @@ class LinearAnnealer:
         self.final = final
         self.steps = steps
 
-        # Current value
         self.t = 0
         self.current = init
 

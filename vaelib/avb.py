@@ -169,12 +169,9 @@ class Discriminator(nn.Module):
             logits (torch.Tensor): Logits, size `(b, 1)`.
         """
 
-        # Encode
         h_x = self.disc_x(x)
         h_x = self.fc_x(h_x.view(-1, 1024))
         h_z = self.disc_z(z)
-
-        # Calculate logits
         logits = self.fc(torch.cat([h_x, h_z], dim=1))
 
         return logits
@@ -198,63 +195,38 @@ class AVB(BaseVAE):
         self.encoder = Encoder(in_channels, z_dim, e_dim)
         self.decoder = Decoder(in_channels, z_dim)
 
-        # Discriminator for estimating density ratio
         self.discriminator = Discriminator(in_channels, z_dim)
         self.bce_loss = nn.BCEWithLogitsLoss(reduction="none")
 
-        # Prior
         self.register_buffer("p_mu", torch.zeros(1, z_dim))
         self.register_buffer("p_var", torch.ones(1, z_dim))
 
     def inference(
         self, x: Tensor, y: Optional[Tensor] = None, beta: float = 1.0
     ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
-        """Inferences reconstruction with ELBO loss calculation.
 
-        Args:
-            x (torch.Tensor): Observations, size `(b, c, h, w)`.
-            y (torch.Tensor, optional): Labels, size `(b,)`.
-            beta (float, optional): Beta coefficient for KL loss.
-
-        Returns:
-            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded data. The
-                first element should be reconstructed observations.
-            loss_dict (dict of [str, torch.Tensor]): Dict of lossses.
-        """
-
-        # Data size
         batch = x.size(0)
-
-        # Sample e
         e_mu = x.new_zeros((batch, self.e_dim))
         e_var = x.new_ones((batch, self.e_dim))
         e = e_mu + e_var ** 0.5 * torch.randn_like(e_var)
 
-        # Sample z_p from prior
         z_mu = x.new_zeros((batch, self.z_dim))
         z_var = x.new_ones((batch, self.z_dim))
         z_p = z_mu + z_var ** 0.5 * torch.randn_like(z_var)
 
-        # Encode latents
         z_q = self.encoder(x, e)
-
-        # Decode reconstruction
         recon = self.decoder(z_q)
 
-        # Discriminator
         logits = self.discriminator(x, z_q)
         logits = beta * logits.sum(dim=1)
 
-        # Reconstruction loss
         ce_loss = nll_bernoulli(x, recon, reduce=False)
         ce_loss = ce_loss.sum(dim=[1, 2, 3])
 
-        # Discriminator loss
         log_d_q = self.bce_loss(self.discriminator(x, z_q.detach()), z_q.new_ones((batch, 1)))
         log_d_p = self.bce_loss(self.discriminator(x, z_p), z_p.new_zeros((batch, 1)))
         loss_d = (log_d_q + log_d_p).sum(dim=1)
 
-        # Returned loss
         loss_dict = {
             "loss": logits + ce_loss,
             "ce_loss": ce_loss,
@@ -265,15 +237,6 @@ class AVB(BaseVAE):
         return (recon, z_q), loss_dict
 
     def sample(self, batch_size: int = 1, y: Optional[Tensor] = None) -> Tensor:
-        """Samples data from model.
-
-        Args:
-            batch_size (int, optional): Batch size of sampled data.
-            y (torch.Tensor, optional): Labels, size `(b,)`.
-
-        Returns:
-            x (torch.Tensor): Sampled observations, size `(b, c, h, w)`.
-        """
 
         mu = self.p_mu.repeat(batch_size, 1)
         var = self.p_var.repeat(batch_size, 1)
@@ -284,10 +247,5 @@ class AVB(BaseVAE):
         return x
 
     def adversarial_parameters(self) -> Optional[Iterator]:
-        """Model parameters for adversarial training.
-
-        Returns:
-            params (iterator or None): Parameters of discriminator.
-        """
 
         return self.discriminator.parameters()
