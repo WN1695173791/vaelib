@@ -82,7 +82,7 @@ class Trainer:
     def run(self) -> None:
         """Main run method."""
 
-        self._check_logdir()
+        self._make_logdir()
         self._init_logger()
         self._init_writer()
 
@@ -129,7 +129,7 @@ class Trainer:
         self._pbar.close()
         self._logger.info("Finish experiment")
 
-    def _check_logdir(self) -> None:
+    def _make_logdir(self) -> None:
 
         self._logdir = pathlib.Path(self._config.logdir, time.strftime("%Y%m%d%H%M"))
         self._logdir.mkdir(parents=True, exist_ok=True)
