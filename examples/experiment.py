@@ -62,34 +62,84 @@ class Trainer:
 
     def __init__(self, model: vaelib.BaseVAE, config: dict):
 
-        self.model = model
-        self.config = Config(**config)
-        self.global_steps = 0
-        self.postfix: Dict[str, float] = {}
-        self.beta = 1.0
+        self._model = model
+        self._config = Config(**config)
+        self._global_steps = 0
+        self._postfix: Dict[str, float] = {}
+        self._beta = 1.0
 
-        self.logdir: pathlib.Path
-        self.logger: logging.Logger
-        self.writer: tb.SummaryWriter
-        self.train_loader: dataloader.DataLoader
-        self.test_loader: dataloader.DataLoader
-        self.optimizer: optimizer.Optimizer
-        self.adv_optimizer: Optional[optimizer.Optimizer]
-        self.beta_anneler: vaelib.LinearAnnealer
-        self.device: torch.device
-        self.pbar: tqdm.tqdm
+        self._logdir: pathlib.Path
+        self._logger: logging.Logger
+        self._writer: tb.SummaryWriter
+        self._train_loader: dataloader.DataLoader
+        self._test_loader: dataloader.DataLoader
+        self._optimizer: optimizer.Optimizer
+        self._adv_optimizer: Optional[optimizer.Optimizer]
+        self._beta_anneler: vaelib.LinearAnnealer
+        self._device: torch.device
+        self._pbar: tqdm.tqdm
 
-    def check_logdir(self) -> None:
+    def run(self) -> None:
+        """Main run method."""
+
+        self._check_logdir()
+        self._init_logger()
+        self._init_writer()
+
+        try:
+            self._base_run()
+        except Exception as e:
+            self._logger.exception(f"Run function error: {e}")
+        finally:
+            self._quit()
+
+    def _base_run(self) -> None:
+        """Base running method."""
+
+        self._logger.info("Start experiment")
+        self._logger.info(f"Logdir: {self._logdir}")
+        self._logger.info(f"Params: {self._config}")
+
+        if self._config.gpus:
+            self._device = torch.device(f"cuda:{self._config.gpus}")
+        else:
+            self._device = torch.device("cpu")
+
+        self._load_dataloader()
+        self._model = self._model.to(self._device)
+        adv_params = self._model.adversarial_parameters()
+        if adv_params is not None:
+            self._optimizer = optim.Adam(
+                self._model.model_parameters(), **self._config.optimizer_params
+            )
+            self._adv_optimizer = optim.Adam(adv_params, **self._config.adv_optimizer_params)
+        else:
+            self._optimizer = optim.Adam(self._model.parameters(), **self._config.optimizer_params)
+            self._adv_optimizer = None
+
+        self._beta_anneler = vaelib.LinearAnnealer(**self._config.beta_annealer_params)
+
+        self._pbar = tqdm.tqdm(total=self._config.max_steps)
+        self._global_steps = 0
+        self._postfix = {"train/loss": 0.0, "test/loss": 0.0}
+
+        while self._global_steps < self._config.max_steps:
+            self._train()
+
+        self._pbar.close()
+        self._logger.info("Finish experiment")
+
+    def _check_logdir(self) -> None:
         """Checks log directory.
 
         This method specifies logdir and make the directory if it does not
         exist.
         """
 
-        self.logdir = pathlib.Path(self.config.logdir, time.strftime("%Y%m%d%H%M"))
-        self.logdir.mkdir(parents=True, exist_ok=True)
+        self._logdir = pathlib.Path(self._config.logdir, time.strftime("%Y%m%d%H%M"))
+        self._logdir.mkdir(parents=True, exist_ok=True)
 
-    def init_logger(self) -> None:
+    def _init_logger(self) -> None:
         """Initalizes logger."""
 
         logger = logging.getLogger()
@@ -103,7 +153,7 @@ class Trainer:
         sh.setFormatter(sh_fmt)
         logger.addHandler(sh)
 
-        fh = logging.FileHandler(filename=self.logdir / "training.log")
+        fh = logging.FileHandler(filename=self._logdir / "training.log")
         fh.setLevel(logging.DEBUG)
         fh_fmt = logging.Formatter(
             "%(asctime)s - %(module)s.%(funcName)s " "- %(levelname)s : %(message)s"
@@ -111,31 +161,31 @@ class Trainer:
         fh.setFormatter(fh_fmt)
         logger.addHandler(fh)
 
-        self.logger = logger
+        self._logger = logger
 
-    def init_writer(self) -> None:
+    def _init_writer(self) -> None:
         """Initializes tensorboard writer."""
 
-        self.writer = tb.SummaryWriter(str(self.logdir))
+        self._writer = tb.SummaryWriter(str(self._logdir))
 
-    def load_dataloader(self) -> None:
+    def _load_dataloader(self) -> None:
         """Loads data loader for training and test."""
 
-        self.logger.info("Load dataset")
+        self._logger.info("Load dataset")
 
-        if self.config.model == "nvae":
+        if self._config.model == "nvae":
             _transform = transforms.Compose([transforms.Resize(32), transforms.ToTensor()])
         else:
             _transform = transforms.Compose([transforms.Resize(64), transforms.ToTensor()])
 
         train_data = datasets.MNIST(
-            root=self.config.data_dir,
+            root=self._config.data_dir,
             train=True,
             download=True,
             transform=_transform,
         )
         test_data = datasets.MNIST(
-            root=self.config.data_dir,
+            root=self._config.data_dir,
             train=False,
             download=True,
             transform=_transform,
@@ -146,139 +196,141 @@ class Trainer:
         else:
             kwargs = {}
 
-        self.train_loader = torch.utils.data.DataLoader(
+        self._train_loader = torch.utils.data.DataLoader(
             train_data,
             shuffle=True,
-            batch_size=self.config.batch_size,
+            batch_size=self._config.batch_size,
             **kwargs,
         )
 
-        self.test_loader = torch.utils.data.DataLoader(
+        self._test_loader = torch.utils.data.DataLoader(
             test_data,
             shuffle=False,
-            batch_size=self.config.batch_size,
+            batch_size=self._config.batch_size,
             **kwargs,
         )
 
-        self.logger.info(f"Train dataset size: {len(self.train_loader)}")
-        self.logger.info(f"Test dataset size: {len(self.test_loader)}")
+        self._logger.info(f"Train dataset size: {len(self._train_loader)}")
+        self._logger.info(f"Test dataset size: {len(self._test_loader)}")
 
-    def train(self) -> None:
+    def _train(self) -> None:
         """Trains model."""
 
-        for data, _ in self.train_loader:
-            self.model.train()
-            data = data.to(self.device)
-            self.beta = next(self.beta_anneler)
+        for data, _ in self._train_loader:
+            self._model.train()
+            data = data.to(self._device)
+            self._beta = next(self._beta_anneler)
 
-            self.optimizer.zero_grad()
-            loss_dict = self.model(data, beta=self.beta)
+            self._optimizer.zero_grad()
+            loss_dict = self._model(data, beta=self._beta)
             loss = loss_dict["loss"].mean()
 
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.max_grad_norm)
-            torch.nn.utils.clip_grad_value_(self.model.parameters(), self.config.max_grad_value)
-            self.optimizer.step()
+            torch.nn.utils.clip_grad_norm_(self._model.parameters(), self._config.max_grad_norm)
+            torch.nn.utils.clip_grad_value_(self._model.parameters(), self._config.max_grad_value)
+            self._optimizer.step()
 
-            if self.adv_optimizer is not None:
-                self.adv_optimizer.zero_grad()
-                loss_dict = self.model(data)
+            if self._adv_optimizer is not None:
+                self._adv_optimizer.zero_grad()
+                loss_dict = self._model(data)
                 loss_d = loss_dict["loss_d"].mean()
 
                 loss_d.backward()
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.max_grad_norm)
-                torch.nn.utils.clip_grad_value_(
-                    self.model.parameters(), self.config.max_grad_value
+                torch.nn.utils.clip_grad_norm_(
+                    self._model.parameters(), self._config.max_grad_norm
                 )
-                self.adv_optimizer.step()
+                torch.nn.utils.clip_grad_value_(
+                    self._model.parameters(), self._config.max_grad_value
+                )
+                self._adv_optimizer.step()
 
-            self.global_steps += 1
-            self.pbar.update(1)
+            self._global_steps += 1
+            self._pbar.update(1)
 
-            self.postfix["train/loss"] = loss.item()
-            self.pbar.set_postfix(self.postfix)
+            self._postfix["train/loss"] = loss.item()
+            self._pbar.set_postfix(self._postfix)
 
             for key, value in loss_dict.items():
-                self.writer.add_scalar(f"train/{key}", value.mean(), self.global_steps)
+                self._writer.add_scalar(f"train/{key}", value.mean(), self._global_steps)
 
-            if self.global_steps % self.config.test_interval == 0:
-                self.test()
+            if self._global_steps % self._config.test_interval == 0:
+                self._test()
 
-            if self.global_steps % self.config.save_interval == 0:
-                self.save_checkpoint()
+            if self._global_steps % self._config.save_interval == 0:
+                self._save_checkpoint()
 
                 loss_logger = {k: v.mean() for k, v in loss_dict.items()}
-                self.logger.debug(f"Train loss (steps={self.global_steps}): " f"{loss_logger}")
+                self._logger.debug(f"Train loss (steps={self._global_steps}): " f"{loss_logger}")
 
-                self.save_plots()
+                self._save_plots()
 
-            if self.global_steps >= self.config.max_steps:
+            if self._global_steps >= self._config.max_steps:
                 break
 
-    def test(self) -> None:
+    def _test(self) -> None:
         """Tests model."""
 
         loss_logger: DefaultDict[str, float] = collections.defaultdict(float)
-        self.model.eval()
-        for data, _ in self.test_loader:
+        self._model.eval()
+        for data, _ in self._test_loader:
             with torch.no_grad():
-                data = data.to(self.device)
-                loss_dict = self.model(data, beta=self.beta)
+                data = data.to(self._device)
+                loss_dict = self._model(data, beta=self._beta)
                 loss = loss_dict["loss"]
 
-            self.postfix["test/loss"] = loss.mean().item()
-            self.pbar.set_postfix(self.postfix)
+            self._postfix["test/loss"] = loss.mean().item()
+            self._pbar.set_postfix(self._postfix)
 
             for key, value in loss_dict.items():
                 loss_logger[key] += value.sum().item()
 
         for key, value in loss_logger.items():
-            self.writer.add_scalar(
+            self._writer.add_scalar(
                 f"test/{key}",
-                value / (len(self.test_loader)),
-                self.global_steps,
+                value / (len(self._test_loader)),
+                self._global_steps,
             )
 
-        self.logger.debug(f"Test loss (steps={self.global_steps}): {loss_logger}")
+        self._logger.debug(f"Test loss (steps={self._global_steps}): {loss_logger}")
 
-    def save_checkpoint(self) -> None:
+    def _save_checkpoint(self) -> None:
         """Saves trained model and optimizer to checkpoint file.
 
         Args:
             loss (float): Saved loss value.
         """
 
-        self.logger.debug("Save trained model")
+        self._logger.debug("Save trained model")
 
         # Remove unused prefix
         model_state_dict = {}
-        for k, v in self.model.state_dict().items():
+        for k, v in self._model.state_dict().items():
             model_state_dict[k.replace("module.", "")] = v
 
         optimizer_state_dict = {}
-        for k, v in self.optimizer.state_dict().items():
+        for k, v in self._optimizer.state_dict().items():
             optimizer_state_dict[k.replace("module.", "")] = v
 
         state_dict = {
-            "steps": self.global_steps,
+            "steps": self._global_steps,
             "model_state_dict": model_state_dict,
             "optimizer_state_dict": optimizer_state_dict,
         }
-        path = self.logdir / f"checkpoint_{self.global_steps}.pt"
+        path = self._logdir / f"checkpoint_{self._global_steps}.pt"
         torch.save(state_dict, path)
 
-    def save_configs(self) -> None:
+    def _save_configs(self) -> None:
         """Saves setting including config and args in json format."""
 
-        self.logger.debug("Save configs")
+        self._logger.debug("Save configs")
 
-        config = dataclasses.asdict(self.config)
-        config["logdir"] = str(self.logdir)
+        config = dataclasses.asdict(self._config)
+        config["logdir"] = str(self._logdir)
 
-        with (self.logdir / "config.json").open("w") as f:
+        with (self._logdir / "config.json").open("w") as f:
             json.dump(config, f)
 
-    def save_plots(self) -> None:
+    def _save_plots(self) -> None:
         """Save reconstructed and sampled plots."""
 
         def gridshow(img: Tensor) -> None:
@@ -292,14 +344,14 @@ class Trainer:
             plt.imshow(npgrid, interpolation="nearest")
 
         with torch.no_grad():
-            x, _ = next(iter(self.test_loader))
-            x = x[:16].to(self.device)
-            recon = self.model.reconstruct(x)
-            sample = self.model.sample(16)
+            x, _ = next(iter(self._test_loader))
+            x = x[:16].to(self._device)
+            recon = self._model.reconstruct(x)
+            sample = self._model.sample(16)
 
-        x = x.cpu()
-        recon = recon.cpu()
-        sample = sample.cpu()
+            x = x.cpu()
+            recon = recon.cpu()
+            sample = sample.cpu()
 
         plt.figure(figsize=(20, 12))
 
@@ -316,66 +368,11 @@ class Trainer:
         plt.title("Sampled")
 
         plt.tight_layout()
-        plt.savefig(self.logdir / f"fig_{self.global_steps}.png")
+        plt.savefig(self._logdir / f"fig_{self._global_steps}.png")
         plt.close()
 
-    def quit(self) -> None:
+    def _quit(self) -> None:
         """Post process."""
 
-        self.logger.info("Quit base run method")
-        self.save_configs()
-        self.writer.close()
-
-    def _base_run(self) -> None:
-        """Base running method."""
-
-        self.logger.info("Start experiment")
-
-        if self.config.gpus:
-            self.device = torch.device(f"cuda:{self.config.gpus}")
-        else:
-            self.device = torch.device("cpu")
-
-        self.load_dataloader()
-        self.model = self.model.to(self.device)
-        adv_params = self.model.adversarial_parameters()
-        if adv_params is not None:
-            self.optimizer = optim.Adam(
-                self.model.model_parameters(), **self.config.optimizer_params
-            )
-            self.adv_optimizer = optim.Adam(adv_params, **self.config.adv_optimizer_params)
-        else:
-            self.optimizer = optim.Adam(self.model.parameters(), **self.config.optimizer_params)
-            self.adv_optimizer = None
-
-        self.beta_anneler = vaelib.LinearAnnealer(**self.config.beta_annealer_params)
-
-        self.pbar = tqdm.tqdm(total=self.config.max_steps)
-        self.global_steps = 0
-        self.postfix = {"train/loss": 0.0, "test/loss": 0.0}
-
-        while self.global_steps < self.config.max_steps:
-            self.train()
-
-        self.pbar.close()
-        self.logger.info("Finish training")
-
-    def run(self) -> None:
-        """Main run method."""
-
-        self.check_logdir()
-        self.init_logger()
-        self.init_writer()
-
-        self.logger.info("Start run")
-        self.logger.info(f"Logdir: {self.logdir}")
-        self.logger.info(f"Params: {self.config}")
-
-        try:
-            self._base_run()
-        except Exception as e:
-            self.logger.exception(f"Run function error: {e}")
-        finally:
-            self.quit()
-
-        self.logger.info("Finish run")
+        self._save_configs()
+        self._writer.close()
