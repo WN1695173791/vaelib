@@ -314,7 +314,6 @@ class Trainer:
             json.dump(config, f)
 
     def _save_plots(self) -> None:
-
         def gridshow(img: Tensor) -> None:
             if img.dim() == 5 and img.size(1) == 1:
                 img = img.squeeze(1)
