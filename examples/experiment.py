@@ -94,7 +94,6 @@ class Trainer:
             self._quit()
 
     def _base_run(self) -> None:
-        """Base running method."""
 
         self._logger.info("Start experiment")
         self._logger.info(f"Logdir: {self._logdir}")
