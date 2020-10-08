@@ -62,11 +62,12 @@ class Trainer:
 
     def __init__(self, model: vaelib.BaseVAE, config: dict):
 
-        # Params
         self.model = model
         self.config = Config(**config)
+        self.global_steps = 0
+        self.postfix: Dict[str, float] = {}
+        self.beta = 1.0
 
-        # Attributes
         self.logdir: pathlib.Path
         self.logger: logging.Logger
         self.writer: tb.SummaryWriter
@@ -77,11 +78,6 @@ class Trainer:
         self.beta_anneler: vaelib.LinearAnnealer
         self.device: torch.device
         self.pbar: tqdm.tqdm
-
-        # Training utils
-        self.global_steps = 0
-        self.postfix: Dict[str, float] = {}
-        self.beta = 1.0
 
     def check_logdir(self) -> None:
         """Checks log directory.
@@ -96,11 +92,9 @@ class Trainer:
     def init_logger(self) -> None:
         """Initalizes logger."""
 
-        # Initialize logger
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
 
-        # Set stream handler (console)
         sh = logging.StreamHandler()
         sh.setLevel(logging.INFO)
         sh_fmt = logging.Formatter(
@@ -109,7 +103,6 @@ class Trainer:
         sh.setFormatter(sh_fmt)
         logger.addHandler(sh)
 
-        # Set file handler (log file)
         fh = logging.FileHandler(filename=self.logdir / "training.log")
         fh.setLevel(logging.DEBUG)
         fh_fmt = logging.Formatter(
@@ -135,7 +128,6 @@ class Trainer:
         else:
             _transform = transforms.Compose([transforms.Resize(64), transforms.ToTensor()])
 
-        # Dataset
         train_data = datasets.MNIST(
             root=self.config.data_dir,
             train=True,
@@ -149,7 +141,6 @@ class Trainer:
             transform=_transform,
         )
 
-        # Params for GPU
         if torch.cuda.is_available():
             kwargs = {"num_workers": 0, "pin_memory": True}
         else:
@@ -177,31 +168,23 @@ class Trainer:
 
         for data, _ in self.train_loader:
             self.model.train()
-
-            # Data to device
             data = data.to(self.device)
-
-            # Annealing
             self.beta = next(self.beta_anneler)
 
-            # Forward
             self.optimizer.zero_grad()
             loss_dict = self.model(data, beta=self.beta)
             loss = loss_dict["loss"].mean()
 
-            # Backward and update
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.max_grad_norm)
             torch.nn.utils.clip_grad_value_(self.model.parameters(), self.config.max_grad_value)
             self.optimizer.step()
 
             if self.adv_optimizer is not None:
-                # Discriminator loss
                 self.adv_optimizer.zero_grad()
                 loss_dict = self.model(data)
                 loss_d = loss_dict["loss_d"].mean()
 
-                # Backward and update
                 loss_d.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.max_grad_norm)
                 torch.nn.utils.clip_grad_value_(
@@ -209,22 +192,18 @@ class Trainer:
                 )
                 self.adv_optimizer.step()
 
-            # Progress bar update
             self.global_steps += 1
             self.pbar.update(1)
 
             self.postfix["train/loss"] = loss.item()
             self.pbar.set_postfix(self.postfix)
 
-            # Summary
             for key, value in loss_dict.items():
                 self.writer.add_scalar(f"train/{key}", value.mean(), self.global_steps)
 
-            # Test
             if self.global_steps % self.config.test_interval == 0:
                 self.test()
 
-            # Save checkpoint
             if self.global_steps % self.config.save_interval == 0:
                 self.save_checkpoint()
 
@@ -233,36 +212,26 @@ class Trainer:
 
                 self.save_plots()
 
-            # Check step limit
             if self.global_steps >= self.config.max_steps:
                 break
 
     def test(self) -> None:
         """Tests model."""
 
-        # Logger for loss
         loss_logger: DefaultDict[str, float] = collections.defaultdict(float)
-
-        # Run
         self.model.eval()
         for data, _ in self.test_loader:
             with torch.no_grad():
-                # Data to device
                 data = data.to(self.device)
-
-                # Calculate loss
                 loss_dict = self.model(data, beta=self.beta)
                 loss = loss_dict["loss"]
 
-            # Update progress bar
             self.postfix["test/loss"] = loss.mean().item()
             self.pbar.set_postfix(self.postfix)
 
-            # Save loss
             for key, value in loss_dict.items():
                 loss_logger[key] += value.sum().item()
 
-        # Summary
         for key, value in loss_logger.items():
             self.writer.add_scalar(
                 f"test/{key}",
@@ -279,10 +248,9 @@ class Trainer:
             loss (float): Saved loss value.
         """
 
-        # Log
         self.logger.debug("Save trained model")
 
-        # Remove unnecessary prefix from state dict keys
+        # Remove unused prefix
         model_state_dict = {}
         for k, v in self.model.state_dict().items():
             model_state_dict[k.replace("module.", "")] = v
@@ -291,7 +259,6 @@ class Trainer:
         for k, v in self.optimizer.state_dict().items():
             optimizer_state_dict[k.replace("module.", "")] = v
 
-        # Save model
         state_dict = {
             "steps": self.global_steps,
             "model_state_dict": model_state_dict,
@@ -334,7 +301,6 @@ class Trainer:
         recon = recon.cpu()
         sample = sample.cpu()
 
-        # Plot
         plt.figure(figsize=(20, 12))
 
         plt.subplot(311)
@@ -365,41 +331,29 @@ class Trainer:
 
         self.logger.info("Start experiment")
 
-        # Device
         if self.config.gpus:
             self.device = torch.device(f"cuda:{self.config.gpus}")
         else:
             self.device = torch.device("cpu")
 
-        # Data
         self.load_dataloader()
-
-        # Model
         self.model = self.model.to(self.device)
-
-        # Optimizer
         adv_params = self.model.adversarial_parameters()
         if adv_params is not None:
-            # Optimzer for encoder and decoder
             self.optimizer = optim.Adam(
                 self.model.model_parameters(), **self.config.optimizer_params
             )
-
-            # Optimizer for discriminator
             self.adv_optimizer = optim.Adam(adv_params, **self.config.adv_optimizer_params)
         else:
             self.optimizer = optim.Adam(self.model.parameters(), **self.config.optimizer_params)
             self.adv_optimizer = None
 
-        # Annealer
         self.beta_anneler = vaelib.LinearAnnealer(**self.config.beta_annealer_params)
 
-        # Progress bar
         self.pbar = tqdm.tqdm(total=self.config.max_steps)
         self.global_steps = 0
         self.postfix = {"train/loss": 0.0, "test/loss": 0.0}
 
-        # Run training
         while self.global_steps < self.config.max_steps:
             self.train()
 
@@ -409,7 +363,6 @@ class Trainer:
     def run(self) -> None:
         """Main run method."""
 
-        # Settings
         self.check_logdir()
         self.init_logger()
         self.init_writer()
@@ -418,7 +371,6 @@ class Trainer:
         self.logger.info(f"Logdir: {self.logdir}")
         self.logger.info(f"Params: {self.config}")
 
-        # Run
         try:
             self._base_run()
         except Exception as e:
