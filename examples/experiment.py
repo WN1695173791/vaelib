@@ -130,17 +130,11 @@ class Trainer:
         self._logger.info("Finish experiment")
 
     def _check_logdir(self) -> None:
-        """Checks log directory.
-
-        This method specifies logdir and make the directory if it does not
-        exist.
-        """
 
         self._logdir = pathlib.Path(self._config.logdir, time.strftime("%Y%m%d%H%M"))
         self._logdir.mkdir(parents=True, exist_ok=True)
 
     def _init_logger(self) -> None:
-        """Initalizes logger."""
 
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
@@ -164,12 +158,10 @@ class Trainer:
         self._logger = logger
 
     def _init_writer(self) -> None:
-        """Initializes tensorboard writer."""
 
         self._writer = tb.SummaryWriter(str(self._logdir))
 
     def _load_dataloader(self) -> None:
-        """Loads data loader for training and test."""
 
         self._logger.info("Load dataset")
 
@@ -214,7 +206,6 @@ class Trainer:
         self._logger.info(f"Test dataset size: {len(self._test_loader)}")
 
     def _train(self) -> None:
-        """Trains model."""
 
         for data, _ in self._train_loader:
             self._model.train()
@@ -268,7 +259,6 @@ class Trainer:
                 break
 
     def _test(self) -> None:
-        """Tests model."""
 
         loss_logger: DefaultDict[str, float] = collections.defaultdict(float)
         self._model.eval()
@@ -294,11 +284,6 @@ class Trainer:
         self._logger.debug(f"Test loss (steps={self._global_steps}): {loss_logger}")
 
     def _save_checkpoint(self) -> None:
-        """Saves trained model and optimizer to checkpoint file.
-
-        Args:
-            loss (float): Saved loss value.
-        """
 
         self._logger.debug("Save trained model")
 
@@ -320,10 +305,8 @@ class Trainer:
         torch.save(state_dict, path)
 
     def _save_configs(self) -> None:
-        """Saves setting including config and args in json format."""
 
         self._logger.debug("Save configs")
-
         config = dataclasses.asdict(self._config)
         config["logdir"] = str(self._logdir)
 
@@ -331,7 +314,6 @@ class Trainer:
             json.dump(config, f)
 
     def _save_plots(self) -> None:
-        """Save reconstructed and sampled plots."""
 
         def gridshow(img: Tensor) -> None:
             if img.dim() == 5 and img.size(1) == 1:
@@ -372,7 +354,6 @@ class Trainer:
         plt.close()
 
     def _quit(self) -> None:
-        """Post process."""
 
         self._save_configs()
         self._writer.close()
