@@ -28,7 +28,7 @@ class Encoder(nn.Module):
         e_dim (int): Dimension size of noises.
     """
 
-    def __init__(self, in_channels: int, z_dim: int, e_dim: int):
+    def __init__(self, in_channels: int, z_dim: int, e_dim: int) -> None:
         super().__init__()
 
         self.conv = nn.Sequential(
@@ -86,7 +86,7 @@ class Decoder(nn.Module):
         z_dim (int): Dimension size of latents.
     """
 
-    def __init__(self, in_channels: int, z_dim: int):
+    def __init__(self, in_channels: int, z_dim: int) -> None:
         super().__init__()
 
         self.fc = nn.Sequential(
@@ -132,7 +132,7 @@ class Discriminator(nn.Module):
         z_dim (int): Dimension size of latents.
     """
 
-    def __init__(self, in_channels: int, z_dim: int):
+    def __init__(self, in_channels: int, z_dim: int) -> None:
         super().__init__()
 
         self.disc_x = nn.Sequential(
@@ -186,7 +186,7 @@ class AVB(BaseVAE):
         e_dim (int, optional): Dimension size of noises.
     """
 
-    def __init__(self, in_channels: int = 3, z_dim: int = 10, e_dim: int = 10):
+    def __init__(self, in_channels: int = 3, z_dim: int = 10, e_dim: int = 10) -> None:
         super().__init__()
 
         self.z_dim = z_dim
@@ -198,6 +198,8 @@ class AVB(BaseVAE):
         self.discriminator = Discriminator(in_channels, z_dim)
         self.bce_loss = nn.BCEWithLogitsLoss(reduction="none")
 
+        self.p_mu: Tensor
+        self.p_var: Tensor
         self.register_buffer("p_mu", torch.zeros(1, z_dim))
         self.register_buffer("p_var", torch.ones(1, z_dim))
 

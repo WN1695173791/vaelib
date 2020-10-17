@@ -66,7 +66,7 @@ class SELayer(nn.Module):
         reduction (int, optional): Reduction scale.
     """
 
-    def __init__(self, in_channels: int, reduction: int = 16):
+    def __init__(self, in_channels: int, reduction: int = 16) -> None:
         super().__init__()
 
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
@@ -101,7 +101,7 @@ class GenerativeResidualCell(nn.Module):
         expansion_dim (int): Dimension size for expansion.
     """
 
-    def __init__(self, in_channels: int, expansion_dim: int):
+    def __init__(self, in_channels: int, expansion_dim: int) -> None:
         super().__init__()
 
         self.resblock = nn.Sequential(
@@ -152,7 +152,7 @@ class EncodingResidualCell(nn.Module):
         in_channels (int): Channel size of inputs.
     """
 
-    def __init__(self, in_channels: int):
+    def __init__(self, in_channels: int) -> None:
         super().__init__()
 
         self.resblock = nn.Sequential(
@@ -205,7 +205,7 @@ class HierarchicalLayer(nn.Module):
         temperature: float = 1.0,
         do_downsample: bool = False,
         up_channels: int = 3,
-    ):
+    ) -> None:
         super().__init__()
 
         self.inference_block = nn.ModuleList(
@@ -328,7 +328,7 @@ class NouveauVAE(BaseVAE):
         annealing_lmd: float = 0.1,
         temperature: float = 0.7,
         expansion_dim: int = 3,
-    ):
+    ) -> None:
         super().__init__()
 
         layers = []

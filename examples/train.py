@@ -12,7 +12,7 @@ import vaelib
 from experiment import Trainer
 
 
-def main():
+def main() -> None:
 
     args = init_args()
 
@@ -49,7 +49,7 @@ def main():
     trainer.run()
 
 
-def init_args():
+def init_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ML training")
     parser.add_argument(
         "--cuda",

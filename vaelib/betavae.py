@@ -24,7 +24,7 @@ class Encoder(nn.Module):
         z_dim (int): Dimension size of latents.
     """
 
-    def __init__(self, in_channels: int, z_dim: int):
+    def __init__(self, in_channels: int, z_dim: int) -> None:
         super().__init__()
 
         self.conv = nn.Sequential(
@@ -71,7 +71,7 @@ class Decoder(nn.Module):
         z_dim (int): Dimension size of latents.
     """
 
-    def __init__(self, in_channels: int, z_dim: int):
+    def __init__(self, in_channels: int, z_dim: int) -> None:
         super().__init__()
 
         self.fc = nn.Sequential(
@@ -127,7 +127,7 @@ class BetaVAE(BaseVAE):
         beta: float = 10.0,
         capacity: float = 0.0,
         do_anneal: bool = False,
-    ):
+    ) -> None:
         super().__init__()
 
         self.beta = beta
@@ -137,6 +137,8 @@ class BetaVAE(BaseVAE):
         self.encoder = Encoder(in_channels, z_dim)
         self.decoder = Decoder(in_channels, z_dim)
 
+        self.p_mu: Tensor
+        self.p_var: Tensor
         self.register_buffer("p_mu", torch.zeros(1, z_dim))
         self.register_buffer("p_var", torch.ones(1, z_dim))
 

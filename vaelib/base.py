@@ -12,7 +12,7 @@ from torch.nn import functional as F
 class BaseVAE(nn.Module):
     """Base class for VAE models."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.encoder: nn.Module

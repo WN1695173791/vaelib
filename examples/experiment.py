@@ -60,7 +60,7 @@ class Trainer:
         config (dict): Dictionary of hyper-parameters.
     """
 
-    def __init__(self, model: vaelib.BaseVAE, config: dict):
+    def __init__(self, model: vaelib.BaseVAE, config: dict) -> None:
 
         self._model = model
         self._config = Config(**config)
