@@ -1,4 +1,4 @@
-"""Scheduler for training."""
+from typing import Any
 
 
 class LinearAnnealer:
@@ -10,17 +10,16 @@ class LinearAnnealer:
         steps (int): Number of annealing steps.
     """
 
-    def __init__(self, init: float, final: float, steps: int, **kwargs):
+    def __init__(self, init: float, final: float, steps: int, **kwargs: Any) -> None:
 
         self.init = init
         self.final = final
         self.steps = steps
 
-        # Current value
         self.t = 0
         self.current = init
 
-    def __iter__(self):
+    def __iter__(self) -> "LinearAnnealer":
         return self
 
     def __next__(self) -> float:

@@ -12,38 +12,24 @@ import vaelib
 from experiment import Trainer
 
 
-def main():
+def main() -> None:
 
-    # -------------------------------------------------------------------------
-    # 1. Settings
-    # -------------------------------------------------------------------------
-
-    # Command line args
     args = init_args()
 
-    # Configs
     config_path = pathlib.Path(os.getenv("CONFIG_PATH", "./examples/config.json"))
     with config_path.open() as f:
         config = json.load(f)
 
-    # Path
     logdir = str(pathlib.Path(os.getenv("LOGDIR", "./logs/"), os.getenv("EXPERIMENT_NAME", "tmp")))
     dataset_name = os.getenv("DATASET_NAME", "mnist")
     data_dir = pathlib.Path(os.getenv("DATASET_DIR", "./data/"), dataset_name)
 
-    # Cuda setting
     use_cuda = torch.cuda.is_available() and args.cuda != "null"
     gpus = args.cuda if use_cuda else None
 
-    # Random seed
     torch.manual_seed(args.seed)
     random.seed(args.seed)
 
-    # -------------------------------------------------------------------------
-    # 2. Training
-    # -------------------------------------------------------------------------
-
-    # Model
     model_dict = {
         "betavae": vaelib.BetaVAE,
         "avb": vaelib.AVB,
@@ -51,7 +37,6 @@ def main():
     }
     model = model_dict[args.model](**config[f"{args.model}_params"])
 
-    # Params
     params = {
         "logdir": str(logdir),
         "gpus": gpus,
@@ -60,12 +45,11 @@ def main():
     params.update(config)
     params.update(vars(args))
 
-    # Run trainer
     trainer = Trainer(model, params)
     trainer.run()
 
 
-def init_args():
+def init_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ML training")
     parser.add_argument(
         "--cuda",

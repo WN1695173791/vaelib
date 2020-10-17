@@ -24,7 +24,7 @@ class Encoder(nn.Module):
         z_dim (int): Dimension size of latents.
     """
 
-    def __init__(self, in_channels: int, z_dim: int):
+    def __init__(self, in_channels: int, z_dim: int) -> None:
         super().__init__()
 
         self.conv = nn.Sequential(
@@ -71,7 +71,7 @@ class Decoder(nn.Module):
         z_dim (int): Dimension size of latents.
     """
 
-    def __init__(self, in_channels: int, z_dim: int):
+    def __init__(self, in_channels: int, z_dim: int) -> None:
         super().__init__()
 
         self.fc = nn.Sequential(
@@ -127,45 +127,29 @@ class BetaVAE(BaseVAE):
         beta: float = 10.0,
         capacity: float = 0.0,
         do_anneal: bool = False,
-    ):
+    ) -> None:
         super().__init__()
 
         self.beta = beta
         self.capacity = capacity
         self.do_anneal = do_anneal
 
-        # Modules
         self.encoder = Encoder(in_channels, z_dim)
         self.decoder = Decoder(in_channels, z_dim)
 
-        # Prior
+        self.p_mu: Tensor
+        self.p_var: Tensor
         self.register_buffer("p_mu", torch.zeros(1, z_dim))
         self.register_buffer("p_var", torch.ones(1, z_dim))
 
     def inference(
         self, x: Tensor, y: Optional[Tensor] = None, beta: float = 1.0
     ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
-        """Inferences reconstruction with ELBO loss calculation.
 
-        Args:
-            x (torch.Tensor): Observations, size `(b, c, h, w)`.
-            y (torch.Tensor, optional): Labels, size `(b,)`.
-            beta (float, optional): Beta coefficient for KL loss.
-
-        Returns:
-            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded data. The
-                first element should be reconstructed observations.
-            loss_dict (dict of [str, torch.Tensor]): Dict of lossses.
-        """
-
-        # Encode and sample latents
         z_mu, z_var = self.encoder(x)
         z = z_mu + z_var ** 2 * torch.randn_like(z_var)
-
-        # Decode reconstruction
         recon = self.decoder(z)
 
-        # Loss calculation
         ce_loss = nll_bernoulli(x, recon, reduce=False)
         ce_loss = ce_loss.sum(dim=[1, 2, 3])
 
@@ -182,15 +166,6 @@ class BetaVAE(BaseVAE):
         return (recon, z), loss_dict
 
     def sample(self, batch_size: int = 1, y: Optional[Tensor] = None) -> Tensor:
-        """Samples data from model.
-
-        Args:
-            batch_size (int, optional): Batch size of sampled data.
-            y (torch.Tensor, optional): Labels, size `(b,)`.
-
-        Returns:
-            x (torch.Tensor): Sampled observations, size `(b, c, h, w)`.
-        """
 
         mu = self.p_mu.repeat(batch_size, 1)
         var = self.p_var.repeat(batch_size, 1)

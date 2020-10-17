@@ -66,7 +66,7 @@ class SELayer(nn.Module):
         reduction (int, optional): Reduction scale.
     """
 
-    def __init__(self, in_channels: int, reduction: int = 16):
+    def __init__(self, in_channels: int, reduction: int = 16) -> None:
         super().__init__()
 
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
@@ -101,7 +101,7 @@ class GenerativeResidualCell(nn.Module):
         expansion_dim (int): Dimension size for expansion.
     """
 
-    def __init__(self, in_channels: int, expansion_dim: int):
+    def __init__(self, in_channels: int, expansion_dim: int) -> None:
         super().__init__()
 
         self.resblock = nn.Sequential(
@@ -152,7 +152,7 @@ class EncodingResidualCell(nn.Module):
         in_channels (int): Channel size of inputs.
     """
 
-    def __init__(self, in_channels: int):
+    def __init__(self, in_channels: int) -> None:
         super().__init__()
 
         self.resblock = nn.Sequential(
@@ -205,10 +205,9 @@ class HierarchicalLayer(nn.Module):
         temperature: float = 1.0,
         do_downsample: bool = False,
         up_channels: int = 3,
-    ):
+    ) -> None:
         super().__init__()
 
-        # Residual blocks
         self.inference_block = nn.ModuleList(
             [EncodingResidualCell(in_channels) for _ in range(num_cells)]
         )
@@ -216,19 +215,16 @@ class HierarchicalLayer(nn.Module):
             [GenerativeResidualCell(in_channels, expansion_dim) for _ in range(num_cells)]
         )
 
-        # Conv for z params
         self.conv_inf = nn.Conv2d(in_channels, z_channels * 2, 1)
         self.conv_gen = nn.Conv2d(in_channels, z_channels * 2, 1)
         self.conv_cat = nn.Conv2d(z_channels, in_channels, 1)
 
-        # Down and up sample function, used only if do_downsample is True
         self.do_downsample = do_downsample
         self.down_sample = nn.Conv2d(up_channels, in_channels, kernel_size=1, stride=2)
         self.up_sample = nn.ConvTranspose2d(
             in_channels, up_channels, kernel_size=4, stride=2, padding=1
         )
 
-        # Temperature for prior
         self.temperature = temperature
 
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
@@ -249,7 +245,6 @@ class HierarchicalLayer(nn.Module):
         for layer in self.inference_block:
             x = layer(x)
 
-        # Encode variational parameters
         delta_mu, delta_logvar = torch.chunk(self.conv_inf(x), 2, dim=1)
 
         return x, delta_mu, delta_logvar
@@ -274,10 +269,8 @@ class HierarchicalLayer(nn.Module):
             kl_loss (torch.Tensor): Calculated KL loss for latents.
         """
 
-        # Prior params
         p_mu, p_logvar = torch.chunk(self.conv_gen(x), 2, dim=1)
 
-        # Concat
         if delta_mu is not None and delta_logvar is not None:
             mu = p_mu + delta_mu
             var = F.softplus(p_logvar + delta_logvar) + var_lb
@@ -285,21 +278,15 @@ class HierarchicalLayer(nn.Module):
             mu = p_mu
             var = F.softplus(p_logvar) * self.temperature ** 2 + var_lb
 
-        # Sample latents
         z = mu + var ** 0.5 + torch.randn_like(var)
-
-        # Concat input and sampled latents
         x = x + self.conv_cat(z)
 
-        # Generate
         for layer in self.generative_block:
             x = layer(x)
 
-        # Upsample
         if self.do_downsample:
             x = self.up_sample(x)
 
-        # Calculate kl
         if delta_mu is not None and delta_logvar is not None:
             kl_loss = kl_divergence_normal_diff(
                 delta_mu,
@@ -341,15 +328,13 @@ class NouveauVAE(BaseVAE):
         annealing_lmd: float = 0.1,
         temperature: float = 0.7,
         expansion_dim: int = 3,
-    ):
+    ) -> None:
         super().__init__()
 
-        # Hierarchical blocks
         layers = []
         for i, groups in enumerate(num_groups[::-1]):
             for j in range(groups):
                 if j == 0:
-                    # Convert channel size
                     if i == 0:
                         layers.append(
                             HierarchicalLayer(
@@ -389,36 +374,17 @@ class NouveauVAE(BaseVAE):
 
         self.layers = nn.ModuleList(layers)
 
-        # Parameter
         self.annealing_lmd = annealing_lmd
-
-        # Initial states of latents
         self.h_dims = in_dims // (len(num_groups) + 1)
         self.h_init = nn.Parameter(torch.zeros(1, enc_channels, 1, 1))
-
-        # Log scale for outputs
         self.log_scale = nn.Parameter(torch.zeros(1, 1, 1, 1))
 
     def inference(
         self, x: Tensor, y: Optional[Tensor] = None, beta: float = 1.0
     ) -> Tuple[Tuple[Tensor, ...], Dict[str, Tensor]]:
-        """Inferences reconstruction with ELBO loss calculation.
-
-        Args:
-            x (torch.Tensor): Observations, size `(b, c, h, w)`.
-            y (torch.Tensor, optional): Labels, size `(b,)`.
-            beta (float, optional): Beta coefficient for KL loss.
-
-        Returns:
-            samples (tuple of torch.Tensor): Tuple of reconstructed or encoded data. The
-                first element should be reconstructed observations.
-            loss_dict (dict of [str, torch.Tensor]): Dict of lossses.
-        """
 
         # Change data range: [0, 1] -> [-0.5, 0.5]
         x -= 0.5
-
-        # Save original inputs
         inputs = x
 
         # Bottom-up inference
@@ -435,15 +401,10 @@ class NouveauVAE(BaseVAE):
             kl_loss += _kl_tmp
 
         recon = h.clamp(-0.5 + 1 / 512, 0.5 - 1 / 512)
-
-        # NLL loss
         nll_loss = nll_logistic(recon, inputs, self.log_scale.exp(), reduce=False)
         nll_loss = nll_loss.sum(dim=[1, 2, 3])
-
-        # KL annealing
         kl_loss *= beta
 
-        # Spectral regularization
         sr_loss = x.new_zeros((x.size(0),))
         for layer in self.layers:
             for name, value in layer.named_parameters():
@@ -455,15 +416,12 @@ class NouveauVAE(BaseVAE):
                     sr_loss += u.norm() / v.norm()
         sr_loss *= self.annealing_lmd
 
-        # ELBO loss
         loss = nll_loss + kl_loss + sr_loss
 
-        # Bit loss per pixel
         _, *x_dims = x.size()
         pixel_num = torch.tensor(x_dims).prod()
         bit_loss = (loss / pixel_num + math.log(256)) / math.log(2)
 
-        # Loss dict
         loss_dict = {
             "loss": loss,
             "bit_loss": bit_loss,
@@ -478,21 +436,10 @@ class NouveauVAE(BaseVAE):
         return (recon,), loss_dict
 
     def sample(self, batch_size: int = 1, y: Optional[Tensor] = None) -> Tensor:
-        """Samples data from model.
 
-        Args:
-            batch_size (int, optional): Batch size of sampled data.
-            y (torch.Tensor, optional): Labels, size `(b,)`.
-
-        Returns:
-            x (torch.Tensor): Sampled observations, size `(b, c, h, w)`.
-        """
-
-        # Top-down generation
         h = self.h_init.repeat(batch_size, 1, self.h_dims, self.h_dims)
         for layer in self.layers[::-1]:
             h, _ = layer.inverse(h)
-
         sample = h.clamp(-0.5 + 1 / 512, 0.5 - 1 / 512) + 0.5
 
         return sample
