@@ -1,5 +1,3 @@
-"""Trainer class."""
-
 from typing import Dict, DefaultDict, Union, Optional
 
 import collections
@@ -87,13 +85,13 @@ class Trainer:
         self._init_writer()
 
         try:
-            self._base_run()
+            self._run_body()
         except Exception as e:
             self._logger.exception(f"Run function error: {e}")
         finally:
             self._quit()
 
-    def _base_run(self) -> None:
+    def _run_body(self) -> None:
 
         self._logger.info("Start experiment")
         self._logger.info(f"Logdir: {self._logdir}")
