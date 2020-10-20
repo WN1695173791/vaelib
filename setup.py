@@ -7,7 +7,7 @@ install_requires = [
 
 
 extras_require = {
-    "testing": [
+    "dev": [
         "pytest",
         "black",
         "flake8",
