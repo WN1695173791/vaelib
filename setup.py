@@ -2,22 +2,22 @@ from setuptools import setup, find_packages
 
 
 install_requires = [
-    "torch>=1.6",
+    "torch>=1.7",
 ]
 
 
 extras_require = {
+    "training": [
+        "torchvision>=0.8",
+        "matplotlib>=3.2",
+        "tqdm>=4.47",
+        "tensorboardX>=2.1",
+    ],
     "dev": [
         "pytest",
         "black",
         "flake8",
         "mypy",
-    ],
-    "example": [
-        "torchvision>=0.7",
-        "matplotlib>=3.2",
-        "tqdm>=4.47",
-        "tensorboardX>=2.1",
     ],
 }
 
