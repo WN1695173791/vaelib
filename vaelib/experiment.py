@@ -21,6 +21,7 @@ try:
     import matplotlib.pyplot as plt
     import tensorboardX as tb
     import tqdm
+
     IS_SUCCESSFUL = True
 except ImportError:
     IS_SUCCESSFUL = False
@@ -28,23 +29,21 @@ except ImportError:
 
 @dataclasses.dataclass
 class Config:
-    seed: int = 0
     batch_size: int = 64
     max_steps: int = 2
     test_interval: int = 2
     save_interval: int = 2
-    beta_annealer_params: dict = {}
+    beta_annealer_params: dict = dataclasses.field(default_factory=dict)
     max_grad_value: float = 5.0
     max_grad_norm: float = 100.0
     logdir: Union[str, os.PathLike] = "./logs/"
-    gpus: Optional[str] = None
+    gpus: str = ""
 
 
 class Trainer:
     """Trainer class for ML models.
 
     Args:
-        seed: Random seed.
         batch_size: Batch size for training and testing.
         max_steps: Max number of training steps.
         test_interval: Interval steps for testing.
@@ -134,14 +133,14 @@ class Trainer:
             train_data,
             shuffle=True,
             batch_size=self._config.batch_size,
-            **kwargs,
+            **kwargs,  # type: ignore
         )
 
         self._test_loader = dataloader.DataLoader(
             test_data,
             shuffle=False,
             batch_size=self._config.batch_size,
-            **kwargs,
+            **kwargs,  # type: ignore
         )
 
         self._logger.info(f"Train dataset size: {len(self._train_loader)}")
