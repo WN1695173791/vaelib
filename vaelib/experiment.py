@@ -90,8 +90,15 @@ class Trainer:
         self._init_writer()
 
         try:
-            self._load_dataloader(train_data, test_data)
-            self._run_body(model)
+            self._logger.info("Start experiment")
+            self._logger.info(f"Logdir: {self._logdir}")
+            self._logger.info(f"Params: {self._config}")
+
+            self._set_model(model)
+            self._set_data(train_data, test_data)
+            self._start_run()
+
+            self._logger.info("Finish experiment")
         except Exception as e:
             self._logger.exception(f"Run function error: {e}")
         finally:
@@ -129,9 +136,26 @@ class Trainer:
 
         self._writer = tb.SummaryWriter(str(self._logdir))
 
-    def _load_dataloader(self, train_data: Dataset, test_data: Dataset) -> None:
+    def _set_model(self, model: vaelib.BaseVAE) -> None:
 
-        self._logger.info("Load dataset")
+        if self._config.gpus:
+            self._device = torch.device(f"cuda:{self._config.gpus}")
+        else:
+            self._device = torch.device("cpu")
+
+        self._model = model.to(self._device)
+
+        adv_params = self._model.adversarial_parameters()
+        if adv_params is not None:
+            self._optimizer = optim.Adam(self._model.model_parameters())
+            self._adv_optimizer = optim.Adam(adv_params)
+        else:
+            self._optimizer = optim.Adam(self._model.parameters())
+            self._adv_optimizer = None
+
+        self._beta_anneler = vaelib.LinearAnnealer(**self._config.beta_annealer_params)
+
+    def _set_data(self, train_data: Dataset, test_data: Dataset) -> None:
 
         if torch.cuda.is_available():
             kwargs = {"num_workers": 0, "pin_memory": True}
@@ -155,27 +179,7 @@ class Trainer:
         self._logger.info(f"Train dataset size: {len(self._train_loader)}")
         self._logger.info(f"Test dataset size: {len(self._test_loader)}")
 
-    def _run_body(self, model: vaelib.BaseVAE) -> None:
-
-        self._logger.info("Start experiment")
-        self._logger.info(f"Logdir: {self._logdir}")
-        self._logger.info(f"Params: {self._config}")
-
-        if self._config.gpus:
-            self._device = torch.device(f"cuda:{self._config.gpus}")
-        else:
-            self._device = torch.device("cpu")
-
-        self._model = model.to(self._device)
-        adv_params = self._model.adversarial_parameters()
-        if adv_params is not None:
-            self._optimizer = optim.Adam(self._model.model_parameters())
-            self._adv_optimizer = optim.Adam(adv_params)
-        else:
-            self._optimizer = optim.Adam(self._model.parameters())
-            self._adv_optimizer = None
-
-        self._beta_anneler = vaelib.LinearAnnealer(**self._config.beta_annealer_params)
+    def _start_run(self) -> None:
 
         self._pbar = tqdm.tqdm(total=self._config.max_steps)
         self._global_steps = 0
@@ -185,7 +189,6 @@ class Trainer:
             self._train()
 
         self._pbar.close()
-        self._logger.info("Finish experiment")
 
     def _train(self) -> None:
 
@@ -231,11 +234,10 @@ class Trainer:
 
             if self._global_steps % self._config.save_interval == 0:
                 self._save_checkpoint()
+                self._save_plots()
 
                 loss_logger = {k: v.mean() for k, v in loss_dict.items()}
                 self._logger.debug(f"Train loss (steps={self._global_steps}): " f"{loss_logger}")
-
-                self._save_plots()
 
             if self._global_steps >= self._config.max_steps:
                 break
@@ -286,15 +288,6 @@ class Trainer:
         path = self._logdir / f"checkpoint_{self._global_steps}.pt"
         torch.save(state_dict, path)
 
-    def _save_configs(self) -> None:
-
-        self._logger.debug("Save configs")
-        config = dataclasses.asdict(self._config)
-        config["logdir"] = str(self._logdir)
-
-        with (self._logdir / "config.json").open("w") as f:
-            json.dump(config, f)
-
     def _save_plots(self) -> None:
         def gridshow(img: Tensor) -> None:
             if img.dim() == 5 and img.size(1) == 1:
@@ -338,3 +331,12 @@ class Trainer:
 
         self._save_configs()
         self._writer.close()
+
+    def _save_configs(self) -> None:
+
+        self._logger.debug("Save configs")
+        config = dataclasses.asdict(self._config)
+        config["logdir"] = str(self._logdir)
+
+        with (self._logdir / "config.json").open("w") as f:
+            json.dump(config, f)
