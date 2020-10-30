@@ -73,6 +73,9 @@ class Trainer:
         self._device: torch.device
         self._pbar: tqdm.tqdm
 
+        if not IS_SUCCESSFUL:
+            raise ImportError("Extra requires are not installed.")
+
     def run(self, model: vaelib.BaseVAE, train_data: Dataset, test_data: Dataset) -> None:
         """Main run method."""
 
