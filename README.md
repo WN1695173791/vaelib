@@ -30,7 +30,7 @@ Install the package in virtual env.
 python3 -m venv .venv
 source .venv/bin/activate
 pip3 install --upgrade pip
-pip3 install .
+pip3 install ".[training]"
 ```
 
 Or use [Docker](https://docs.docker.com/get-docker/) and [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker). You can run container with GPUs by Docker 19.03+.
@@ -38,12 +38,6 @@ Or use [Docker](https://docs.docker.com/get-docker/) and [NVIDIA Container Toolk
 ```bash
 docker build -t vaelib .
 docker run --gpus all -it vaelib bash
-```
-
-Install other requirements for example code.
-
-```bash
-pip3 install ".[example]"
 ```
 
 # Experiments
