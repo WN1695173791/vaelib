@@ -77,7 +77,13 @@ class Trainer:
             raise ImportError("Extra requires are not installed.")
 
     def run(self, model: vaelib.BaseVAE, train_data: Dataset, test_data: Dataset) -> None:
-        """Main run method."""
+        """Main run method.
+
+        Args:
+            model: ML model.
+            train_data: Dataset for training.
+            test_data: Dataset for testing.
+        """
 
         self._make_logdir()
         self._init_logger()
