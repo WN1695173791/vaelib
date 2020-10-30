@@ -10,7 +10,9 @@ class LinearAnnealer:
         steps (int): Number of annealing steps.
     """
 
-    def __init__(self, init: float, final: float, steps: int, **kwargs: Any) -> None:
+    def __init__(
+        self, init: float = 0.0, final: float = 1.0, steps: int = 3000, **kwargs: Any
+    ) -> None:
 
         self.init = init
         self.final = final
