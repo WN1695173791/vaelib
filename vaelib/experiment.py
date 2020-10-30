@@ -1,69 +1,63 @@
-"""Trainer class."""
-
-from typing import Dict, DefaultDict, Union, Optional
+from typing import Dict, DefaultDict, Union, Optional, Any
 
 import collections
 import dataclasses
 import json
 import logging
+import os
 import pathlib
 import time
-
-import matplotlib.pyplot as plt
-import tqdm
 
 import torch
 from torch import Tensor, optim
 from torch.optim import optimizer
 from torch.utils.data import dataloader
-
-from torchvision import datasets, transforms
+from torch.utils.data.dataset import Dataset
 from torchvision.utils import make_grid
 
-import tensorboardX as tb
-
 import vaelib
+
+try:
+    import matplotlib.pyplot as plt
+    import tensorboardX as tb
+    import tqdm
+
+    IS_SUCCESSFUL = True
+except ImportError:
+    IS_SUCCESSFUL = False
 
 
 @dataclasses.dataclass
 class Config:
-    # From kwargs
-    cuda: str
-    model: str
-    seed: int
-    batch_size: int
-    max_steps: int
-    test_interval: int
-    save_interval: int
-
-    # From config
-    betavae_params: dict
-    avb_params: dict
-    nvae_params: dict
-    optimizer_params: dict
-    adv_optimizer_params: dict
-    beta_annealer_params: dict
-    max_grad_value: float
-    max_grad_norm: float
-
-    # From params
-    logdir: Union[str, pathlib.Path]
-    gpus: Optional[str]
-    data_dir: Union[str, pathlib.Path]
+    batch_size: int = 64
+    max_steps: int = 2
+    test_interval: int = 2
+    save_interval: int = 2
+    beta_annealer_params: dict = dataclasses.field(default_factory=dict)
+    max_grad_value: float = 5.0
+    max_grad_norm: float = 100.0
+    logdir: Union[str, os.PathLike] = "./logs/"
+    gpus: str = ""
 
 
 class Trainer:
     """Trainer class for ML models.
 
     Args:
-        model (vaelib.BaseVAE): ML model.
-        config (dict): Dictionary of hyper-parameters.
+        batch_size: Batch size for training and testing.
+        max_steps: Max number of training steps.
+        test_interval: Interval steps for testing.
+        save_interval: Interval steps for saving checkpoints.
+        beta_annealer_params: Parameter dict for beta annealing.
+        max_grad_value: Max gradient value.
+        max_grad_norm: Max gradient norm.
+        logdir: Path to log directory.
+        gpus: GPU options.
     """
 
-    def __init__(self, model: vaelib.BaseVAE, config: dict) -> None:
+    def __init__(self, **kwargs: Any) -> None:
 
-        self._model = model
-        self._config = Config(**config)
+        self._config = Config(**kwargs)
         self._global_steps = 0
         self._postfix: Dict[str, float] = {}
         self._beta = 1.0
@@ -79,54 +73,29 @@ class Trainer:
         self._device: torch.device
         self._pbar: tqdm.tqdm
 
-    def run(self) -> None:
-        """Main run method."""
+        if not IS_SUCCESSFUL:
+            raise ImportError("Extra requires are not installed.")
+
+    def run(self, model: vaelib.BaseVAE, train_data: Dataset, test_data: Dataset) -> None:
+        """Main run method.
+
+        Args:
+            model: ML model.
+            train_data: Dataset for training.
+            test_data: Dataset for testing.
+        """
 
         self._make_logdir()
         self._init_logger()
         self._init_writer()
 
         try:
-            self._base_run()
+            self._load_dataloader(train_data, test_data)
+            self._run_body(model)
         except Exception as e:
             self._logger.exception(f"Run function error: {e}")
         finally:
             self._quit()
-
-    def _base_run(self) -> None:
-
-        self._logger.info("Start experiment")
-        self._logger.info(f"Logdir: {self._logdir}")
-        self._logger.info(f"Params: {self._config}")
-
-        if self._config.gpus:
-            self._device = torch.device(f"cuda:{self._config.gpus}")
-        else:
-            self._device = torch.device("cpu")
-
-        self._load_dataloader()
-        self._model = self._model.to(self._device)
-        adv_params = self._model.adversarial_parameters()
-        if adv_params is not None:
-            self._optimizer = optim.Adam(
-                self._model.model_parameters(), **self._config.optimizer_params
-            )
-            self._adv_optimizer = optim.Adam(adv_params, **self._config.adv_optimizer_params)
-        else:
-            self._optimizer = optim.Adam(self._model.parameters(), **self._config.optimizer_params)
-            self._adv_optimizer = None
-
-        self._beta_anneler = vaelib.LinearAnnealer(**self._config.beta_annealer_params)
-
-        self._pbar = tqdm.tqdm(total=self._config.max_steps)
-        self._global_steps = 0
-        self._postfix = {"train/loss": 0.0, "test/loss": 0.0}
-
-        while self._global_steps < self._config.max_steps:
-            self._train()
-
-        self._pbar.close()
-        self._logger.info("Finish experiment")
 
     def _make_logdir(self) -> None:
 
@@ -160,49 +129,63 @@ class Trainer:
 
         self._writer = tb.SummaryWriter(str(self._logdir))
 
-    def _load_dataloader(self) -> None:
+    def _load_dataloader(self, train_data: Dataset, test_data: Dataset) -> None:
 
         self._logger.info("Load dataset")
-
-        if self._config.model == "nvae":
-            _transform = transforms.Compose([transforms.Resize(32), transforms.ToTensor()])
-        else:
-            _transform = transforms.Compose([transforms.Resize(64), transforms.ToTensor()])
-
-        train_data = datasets.MNIST(
-            root=self._config.data_dir,
-            train=True,
-            download=True,
-            transform=_transform,
-        )
-        test_data = datasets.MNIST(
-            root=self._config.data_dir,
-            train=False,
-            download=True,
-            transform=_transform,
-        )
 
         if torch.cuda.is_available():
             kwargs = {"num_workers": 0, "pin_memory": True}
         else:
             kwargs = {}
 
-        self._train_loader = torch.utils.data.DataLoader(
+        self._train_loader = dataloader.DataLoader(
             train_data,
             shuffle=True,
             batch_size=self._config.batch_size,
-            **kwargs,
+            **kwargs,  # type: ignore
         )
 
-        self._test_loader = torch.utils.data.DataLoader(
+        self._test_loader = dataloader.DataLoader(
             test_data,
             shuffle=False,
             batch_size=self._config.batch_size,
-            **kwargs,
+            **kwargs,  # type: ignore
         )
 
         self._logger.info(f"Train dataset size: {len(self._train_loader)}")
         self._logger.info(f"Test dataset size: {len(self._test_loader)}")
+
+    def _run_body(self, model: vaelib.BaseVAE) -> None:
+
+        self._logger.info("Start experiment")
+        self._logger.info(f"Logdir: {self._logdir}")
+        self._logger.info(f"Params: {self._config}")
+
+        if self._config.gpus:
+            self._device = torch.device(f"cuda:{self._config.gpus}")
+        else:
+            self._device = torch.device("cpu")
+
+        self._model = model.to(self._device)
+        adv_params = self._model.adversarial_parameters()
+        if adv_params is not None:
+            self._optimizer = optim.Adam(self._model.model_parameters())
+            self._adv_optimizer = optim.Adam(adv_params)
+        else:
+            self._optimizer = optim.Adam(self._model.parameters())
+            self._adv_optimizer = None
+
+        self._beta_anneler = vaelib.LinearAnnealer(**self._config.beta_annealer_params)
+
+        self._pbar = tqdm.tqdm(total=self._config.max_steps)
+        self._global_steps = 0
+        self._postfix = {"train/loss": 0.0, "test/loss": 0.0}
+
+        while self._global_steps < self._config.max_steps:
+            self._train()
+
+        self._pbar.close()
+        self._logger.info("Finish experiment")
 
     def _train(self) -> None:
 

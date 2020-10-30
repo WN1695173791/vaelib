@@ -23,13 +23,9 @@
         "temperature": 0.7,
         "expansion_dim": 3
     },
-    "optimizer_params": {},
-    "adv_optimizer_params": {},
     "beta_annealer_params": {
         "init": 0.0,
         "final": 1.0,
         "steps": 3000
-    },
-    "max_grad_value": 5.0,
-    "max_grad_norm": 100.0
+    }
 }
