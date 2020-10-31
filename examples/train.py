@@ -23,9 +23,12 @@ def main() -> None:
     data_dir = pathlib.Path(os.getenv("DATASET_DIR", "./data/"), dataset_name)
 
     params = vars(args)
-    args_cuda = params.pop("cuda")
     args_seed = params.pop("seed")
+    args_cuda = params.pop("cuda")
     args_model = params.pop("model")
+
+    torch.manual_seed(args_seed)
+    random.seed(args_seed)
 
     use_cuda = torch.cuda.is_available() and args_cuda != "null"
     gpus = args_cuda if use_cuda else ""
@@ -37,9 +40,6 @@ def main() -> None:
             "beta_annealer_params": config["beta_annealer_params"],
         }
     )
-
-    torch.manual_seed(args_seed)
-    random.seed(args_seed)
 
     model_dict = {
         "betavae": vaelib.BetaVAE,
@@ -61,12 +61,7 @@ def main() -> None:
 
 def init_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ML training")
-    parser.add_argument(
-        "--cuda",
-        type=str,
-        default="0",
-        help="Index of CUDA device with comma separation: ex. '0,1'. 'null' means cpu device.",
-    )
+    parser.add_argument("--cuda", type=str, default="0", help="CUDA devices by comma separation.")
     parser.add_argument("--model", type=str, default="betavae", help="Model name.")
     parser.add_argument("--seed", type=int, default=0, help="Random seed.")
     parser.add_argument("--batch-size", type=int, default=64, help="Batch size.")
