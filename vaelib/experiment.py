@@ -98,6 +98,7 @@ class BaseTrainer:
             self._logger.info("Finish experiment")
         except Exception as e:
             self._logger.exception(f"Run function error: {e}")
+            raise RuntimeError("Run function error") from e
         finally:
             self._quit()
 
