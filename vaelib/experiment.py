@@ -98,6 +98,7 @@ class BaseTrainer:
             self._logger.info("Finish experiment")
         except Exception as e:
             self._logger.exception(f"Run function error: {e}")
+            raise RuntimeError("Run function error") from e
         finally:
             self._quit()
 
@@ -114,7 +115,7 @@ class BaseTrainer:
         sh = logging.StreamHandler()
         sh.setLevel(logging.INFO)
         sh_fmt = logging.Formatter(
-            "%(asctime)s - %(module)s.%(funcName)s " "- %(levelname)s : %(message)s"
+            "%(asctime)s - %(module)s.%(funcName)s - %(levelname)s : %(message)s"
         )
         sh.setFormatter(sh_fmt)
         logger.addHandler(sh)
@@ -122,7 +123,7 @@ class BaseTrainer:
         fh = logging.FileHandler(filename=self._logdir / "training.log")
         fh.setLevel(logging.DEBUG)
         fh_fmt = logging.Formatter(
-            "%(asctime)s - %(module)s.%(funcName)s " "- %(levelname)s : %(message)s"
+            "%(asctime)s - %(module)s.%(funcName)s - %(levelname)s : %(message)s"
         )
         fh.setFormatter(fh_fmt)
         logger.addHandler(fh)
@@ -159,7 +160,12 @@ class BaseTrainer:
 
     def _start_run(self) -> None:
 
+        if self._config.gpus:
+            self._device = torch.device(f"cuda:{self._config.gpus}")
+        else:
+            self._device = torch.device("cpu")
         self._model = self._model.to(self._device)
+
         self._pbar = tqdm.tqdm(total=self._config.max_steps)
         self._global_steps = 0
         self._postfix = {"train/loss": 0.0, "test/loss": 0.0}
@@ -308,11 +314,6 @@ class Trainer(BaseTrainer):
         self._beta_anneler: vaelib.LinearAnnealer
 
     def _set_model(self, model: nn.Module) -> None:
-
-        if self._config.gpus:
-            self._device = torch.device(f"cuda:{self._config.gpus}")
-        else:
-            self._device = torch.device("cpu")
 
         assert isinstance(model, vaelib.BaseVAE)
         self._model = model
