@@ -16,7 +16,7 @@ extras_require = {
         "pytest",
         "black",
         "flake8",
-        "mypy==790",
+        "mypy==0.790",
         "isort",
     ],
 }
