@@ -7,7 +7,7 @@ Understanding disentangling in β-VAE
 https://arxiv.org/abs/1804.03599
 """
 
-from typing import Tuple, Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import torch
 from torch import Tensor, nn
