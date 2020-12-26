@@ -1,5 +1,3 @@
-from typing import Dict, DefaultDict, Union, Optional, Any
-
 import collections
 import dataclasses
 import json
@@ -7,9 +5,10 @@ import logging
 import os
 import pathlib
 import time
+from typing import Any, DefaultDict, Dict, Optional, Union
 
 import torch
-from torch import Tensor, optim, nn
+from torch import Tensor, nn, optim
 from torch.optim import optimizer
 from torch.utils.data import dataloader
 from torch.utils.data.dataset import Dataset
@@ -303,7 +302,6 @@ class BaseTrainer:
 
 
 class Trainer(BaseTrainer):
-
     def __init__(self, beta_annealer_params: Optional[dict] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
@@ -347,12 +345,8 @@ class Trainer(BaseTrainer):
         loss_d = loss_dict["loss_d"].mean()
 
         loss_d.backward()
-        torch.nn.utils.clip_grad_norm_(
-            self._model.parameters(), self._config.max_grad_norm
-        )
-        torch.nn.utils.clip_grad_value_(
-            self._model.parameters(), self._config.max_grad_value
-        )
+        torch.nn.utils.clip_grad_norm_(self._model.parameters(), self._config.max_grad_norm)
+        torch.nn.utils.clip_grad_value_(self._model.parameters(), self._config.max_grad_value)
         self._adv_optimizer.step()
 
         for key in loss_dict:

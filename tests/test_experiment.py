@@ -1,11 +1,10 @@
-from typing import Tuple, Optional, Dict
-
-from copy import deepcopy
 import tempfile
+from copy import deepcopy
+from typing import Dict, Optional, Tuple
 
 import torch
-from torch import nn, Tensor
 import torch.nn.functional as F
+from torch import Tensor, nn
 
 import vaelib
 from vaelib.base import BaseVAE

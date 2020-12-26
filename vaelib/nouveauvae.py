@@ -24,9 +24,8 @@ https://arxiv.org/abs/1606.04934, https://github.com/openai/iaf
 Other implementation: https://github.com/pclucas14/iaf-vae
 """
 
-from typing import Dict, Optional, Tuple, Union, List
-
 import math
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 from torch import Tensor, nn

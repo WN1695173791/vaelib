@@ -1,5 +1,4 @@
-from setuptools import setup, find_packages
-
+from setuptools import find_packages, setup
 
 install_requires = [
     "torch>=1.7",
@@ -17,14 +16,15 @@ extras_require = {
         "pytest",
         "black",
         "flake8",
-        "mypy",
+        "mypy==790",
+        "isort",
     ],
 }
 
 
 setup(
     name="vaelib",
-    version="0.1",
+    version="0.2",
     description="VAE models in PyTorch",
     packages=find_packages(),
     install_requires=install_requires,

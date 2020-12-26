@@ -5,7 +5,7 @@ import pathlib
 import random
 
 import torch
-from torchvision import transforms, datasets
+from torchvision import datasets, transforms
 
 import vaelib
 

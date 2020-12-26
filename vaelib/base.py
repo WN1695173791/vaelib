@@ -1,11 +1,10 @@
 """Base class for VAE models."""
 
+import itertools
 from typing import Dict, Iterator, Optional, Tuple
 
-import itertools
-
 import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
 from torch.nn import functional as F
 
 
